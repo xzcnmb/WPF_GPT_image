@@ -1,6 +1,14 @@
 # WPF GPT Image
 
-一个基于 WPF 的本地生图客户端，支持 OpenAI 兼容图片接口、Responses 图片工具和部分聊天兼容图片返回格式。
+使用 WPF 做的 GPT Image 图片生成程序，支持多种接口协议。
+
+## 功能
+
+- OpenAI Images 兼容接口
+- Responses 图片工具接口
+- Chat Completions 图片兼容返回
+- 本地 SQLite 历史记录
+- 图片预览、保存和运行日志
 
 ## 环境
 
