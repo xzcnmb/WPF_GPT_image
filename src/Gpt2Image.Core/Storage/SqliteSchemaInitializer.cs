@@ -18,6 +18,7 @@ public sealed class SqliteSchemaInitializer
         using var transaction = connection.BeginTransaction();
         connection.Execute(SchemaSql, transaction: transaction);
         EnsureBackendProfileProtocolColumn(connection, transaction);
+        EnsureGenerationOutputColumns(connection, transaction);
         connection.Execute(
             @"
             insert or ignore into schema_migrations (version, applied_at)
@@ -61,6 +62,30 @@ public sealed class SqliteSchemaInitializer
         connection.Execute(
             "alter table backend_profiles add column protocol text not null default 'openai-images';",
             transaction: transaction);
+    }
+
+    private static void EnsureGenerationOutputColumns(
+        System.Data.IDbConnection connection,
+        System.Data.IDbTransaction transaction)
+    {
+        var columns = connection.Query<string>(
+                "select name from pragma_table_info('generation_outputs')",
+                transaction: transaction)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!columns.Contains("image_base64"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column image_base64 text null;",
+                transaction: transaction);
+        }
+
+        if (!columns.Contains("source_url"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column source_url text null;",
+                transaction: transaction);
+        }
     }
 
     private const string SchemaSql =
@@ -113,6 +138,8 @@ public sealed class SqliteSchemaInitializer
             height integer null,
             sha256 text not null,
             revised_prompt text null,
+            image_base64 text null,
+            source_url text null,
             created_at text not null
         );
 

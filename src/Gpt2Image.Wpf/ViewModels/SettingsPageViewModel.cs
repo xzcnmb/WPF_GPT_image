@@ -8,6 +8,7 @@ namespace Gpt2Image.Wpf.ViewModels;
 public sealed partial class SettingsPageViewModel : ObservableObject
 {
     private const string DefaultProfileId = "default";
+    private const string DefaultMainlineModel = "gpt-4o-mini";
     private readonly BackendProfileRepository _profiles;
 
     [ObservableProperty]
@@ -23,7 +24,7 @@ public sealed partial class SettingsPageViewModel : ObservableObject
     private string _selectedProtocol = BackendProtocol.OpenAiImages;
 
     [ObservableProperty]
-    private string _mainlineModel = "gpt-5.5";
+    private string _mainlineModel = DefaultMainlineModel;
 
     [ObservableProperty]
     private string _imageModel = "gpt-image-2";
@@ -85,9 +86,19 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         BaseUrl = profile.BaseUrl;
         ApiKey = profile.ApiKey;
         SelectedProtocol = BackendProtocol.Normalize(profile.Protocol);
-        MainlineModel = profile.MainlineModel;
+        MainlineModel = NormalizeMainlineModel(profile.MainlineModel);
         ImageModel = profile.ImageModel;
         Concurrency = Math.Max(1, profile.Concurrency);
+    }
+
+    private static string NormalizeMainlineModel(string value)
+    {
+        var trimmed = value.Trim();
+        return string.IsNullOrWhiteSpace(trimmed)
+               || string.Equals(trimmed, "auto", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(trimmed, "gpt-5.5", StringComparison.OrdinalIgnoreCase)
+            ? DefaultMainlineModel
+            : trimmed;
     }
 
     partial void OnSelectedProtocolChanged(string value)

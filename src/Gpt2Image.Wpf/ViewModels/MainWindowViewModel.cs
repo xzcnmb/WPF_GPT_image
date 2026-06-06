@@ -39,7 +39,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void ShowAgent() => CurrentPage = _agent;
 
     [RelayCommand]
-    private void ShowHistory() => CurrentPage = _history;
+    private void ShowHistory()
+    {
+        _history.RefreshHistory();
+        CurrentPage = _history;
+    }
 
     [RelayCommand]
     private void ShowSettings() => CurrentPage = _settings;

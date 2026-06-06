@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using Gpt2Image.Core.Api;
 using Gpt2Image.Core.Queue;
@@ -43,6 +44,7 @@ public partial class App
                 services.AddHttpClient<IImageGenerationClient, OpenAiCompatibleImageClient>()
                     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
                     {
+                        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
                         PooledConnectionLifetime = TimeSpan.FromMinutes(10)
                     });
                 services.AddSingleton<MainWindowViewModel>();

@@ -9,7 +9,7 @@ public sealed class ImageGenerationRequest
     public string? Model { get; init; }
     public string Size { get; init; } = "1024x1024";
     public string Quality { get; init; } = "auto";
-    public string ResponseFormat { get; init; } = "b64_json";
+    public string ResponseFormat { get; init; } = "url";
     public string OutputFormat { get; init; } = "png";
     public int? OutputCompression { get; init; }
     public string Background { get; init; } = "auto";
@@ -49,6 +49,12 @@ public sealed class TokenUsage
     public int? InputTokens { get; init; }
     public int? OutputTokens { get; init; }
     public int? TotalTokens { get; init; }
+}
+
+public sealed class PromptOptimizationResult
+{
+    public string? OptimizedPrompt { get; init; }
+    public string? Error { get; init; }
 }
 
 public sealed class AgentRunRequest
