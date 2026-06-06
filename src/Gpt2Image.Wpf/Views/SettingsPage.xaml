@@ -1,0 +1,136 @@
+<UserControl x:Class="Gpt2Image.Wpf.Views.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="0,0,0,18">
+            <TextBlock Text="设置" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,5,0,0" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid MaxWidth="880">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="18" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="连接" FontSize="18" FontWeight="SemiBold" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="名称" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+
+                        <Grid Grid.Row="2" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="接口地址" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+
+                        <Grid Grid.Row="3" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="密钥" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <PasswordBox Grid.Column="1" x:Name="ApiKeyBox" PasswordChanged="OnPasswordChanged" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="18" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="模型" FontSize="18" FontWeight="SemiBold" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="协议" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding ProtocolOptions}"
+                                      SelectedValue="{Binding SelectedProtocol, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValuePath="Value"
+                                      DisplayMemberPath="Label" />
+                        </Grid>
+
+                        <Grid Grid.Row="2" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="主模型" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding MainlineModel, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+
+                        <Grid Grid.Row="3" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="生图模型" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding ImageModel, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="18">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Margin="0,0,0,16">
+                            <TextBlock Text="运行" FontSize="18" FontWeight="SemiBold" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="并发数" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding Concurrency, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+
+                        <Button Grid.Row="2" Content="保存" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Left" MinWidth="140" Margin="180,18,0,0" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
