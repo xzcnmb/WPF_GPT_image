@@ -20,6 +20,14 @@ public sealed class StoredImageOutput
     public long ByteLength { get; init; }
 }
 
+public sealed class StoredInputAsset
+{
+    public string FilePath { get; init; } = "";
+    public string MimeType { get; init; } = "";
+    public string Sha256 { get; init; } = "";
+    public long ByteLength { get; init; }
+}
+
 public sealed class LocalImageStorage
 {
     private readonly AppPaths _paths;
@@ -67,6 +75,34 @@ public sealed class LocalImageStorage
             Base64 = base64,
             Index = index,
             OutputRole = saved.OutputRole
+        };
+    }
+
+    public StoredInputAsset SaveInputAsset(string sourcePath)
+    {
+        if (!File.Exists(sourcePath))
+        {
+            throw new FileNotFoundException("输入图片不存在。", sourcePath);
+        }
+
+        _paths.EnsureDirectories();
+        var now = _clock.UtcNow;
+        var extension = NormalizeExtension(Path.GetExtension(sourcePath));
+        var directory = Path.Combine(_paths.ImagesDirectory, "inputs", now.ToString("yyyy"), now.ToString("MM"), now.ToString("dd"));
+        Directory.CreateDirectory(directory);
+
+        var bytes = File.ReadAllBytes(sourcePath);
+        var sha256 = Convert.ToHexString(SHA256.HashData(bytes));
+        var fileName = $"{now:HHmmss}_{Guid.NewGuid():N}.{extension}";
+        var filePath = Path.Combine(directory, fileName);
+        File.WriteAllBytes(filePath, bytes);
+
+        return new StoredInputAsset
+        {
+            FilePath = filePath,
+            MimeType = MimeTypeFor(extension),
+            Sha256 = sha256,
+            ByteLength = bytes.LongLength
         };
     }
 

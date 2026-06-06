@@ -12,6 +12,9 @@
         <DataTemplate DataType="{x:Type viewModels:AgentPageViewModel}">
             <views:AgentPage />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type viewModels:ChatPageViewModel}">
+            <views:ChatPage />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type viewModels:HistoryPageViewModel}">
             <views:HistoryPage />
         </DataTemplate>
@@ -31,6 +34,7 @@
                     <TextBlock Text="GPT2Image" Foreground="#FFFFFF" FontSize="24" FontWeight="SemiBold" />
                     <Button Content="创作" Command="{Binding ShowCreateCommand}" HorizontalContentAlignment="Left" Margin="0,26,0,8" />
                     <Button Content="自动任务" Command="{Binding ShowAgentCommand}" HorizontalContentAlignment="Left" Margin="0,0,0,8" />
+                    <Button Content="对话" Command="{Binding ShowChatCommand}" HorizontalContentAlignment="Left" Margin="0,0,0,8" />
                     <Button Content="历史" Command="{Binding ShowHistoryCommand}" HorizontalContentAlignment="Left" Margin="0,0,0,8" />
                     <Button Content="设置" Command="{Binding ShowSettingsCommand}" HorizontalContentAlignment="Left" />
                 </StackPanel>

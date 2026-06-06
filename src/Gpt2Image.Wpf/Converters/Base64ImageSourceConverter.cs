@@ -10,13 +10,36 @@ public sealed class Base64ImageSourceConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is not string base64 || string.IsNullOrWhiteSpace(base64))
+        if (value is not string source || string.IsNullOrWhiteSpace(source))
         {
             return DependencyProperty.UnsetValue;
         }
 
         try
         {
+            if (Uri.TryCreate(source, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                var remoteImage = new BitmapImage();
+                remoteImage.BeginInit();
+                remoteImage.CacheOption = BitmapCacheOption.OnDemand;
+                remoteImage.UriSource = uri;
+                remoteImage.EndInit();
+                return remoteImage;
+            }
+
+            if (File.Exists(source))
+            {
+                var localImage = new BitmapImage();
+                localImage.BeginInit();
+                localImage.CacheOption = BitmapCacheOption.OnLoad;
+                localImage.UriSource = new Uri(source, UriKind.Absolute);
+                localImage.EndInit();
+                localImage.Freeze();
+                return localImage;
+            }
+
+            var base64 = source;
             var commaIndex = base64.IndexOf(',');
             if (commaIndex >= 0)
             {

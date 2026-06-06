@@ -51,6 +51,12 @@ public sealed class TokenUsage
     public int? TotalTokens { get; init; }
 }
 
+public sealed class PromptOptimizationResult
+{
+    public string? OptimizedPrompt { get; init; }
+    public string? Error { get; init; }
+}
+
 public sealed class AgentRunRequest
 {
     public string Goal { get; init; } = "";

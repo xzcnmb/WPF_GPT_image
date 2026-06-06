@@ -18,6 +18,7 @@ public sealed class SqliteSchemaInitializer
         using var transaction = connection.BeginTransaction();
         connection.Execute(SchemaSql, transaction: transaction);
         EnsureBackendProfileProtocolColumn(connection, transaction);
+        EnsureGenerationOutputColumns(connection, transaction);
         connection.Execute(
             @"
             insert or ignore into schema_migrations (version, applied_at)
@@ -29,6 +30,13 @@ public sealed class SqliteSchemaInitializer
             @"
             insert or ignore into schema_migrations (version, applied_at)
             values (2, @AppliedAt)
+            ",
+            new { AppliedAt = DateTimeOffset.UtcNow.ToString("O") },
+            transaction);
+        connection.Execute(
+            @"
+            insert or ignore into schema_migrations (version, applied_at)
+            values (3, @AppliedAt)
             ",
             new { AppliedAt = DateTimeOffset.UtcNow.ToString("O") },
             transaction);
@@ -61,6 +69,30 @@ public sealed class SqliteSchemaInitializer
         connection.Execute(
             "alter table backend_profiles add column protocol text not null default 'openai-images';",
             transaction: transaction);
+    }
+
+    private static void EnsureGenerationOutputColumns(
+        System.Data.IDbConnection connection,
+        System.Data.IDbTransaction transaction)
+    {
+        var columns = connection.Query<string>(
+                "select name from pragma_table_info('generation_outputs')",
+                transaction: transaction)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!columns.Contains("image_base64"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column image_base64 text null;",
+                transaction: transaction);
+        }
+
+        if (!columns.Contains("source_url"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column source_url text null;",
+                transaction: transaction);
+        }
     }
 
     private const string SchemaSql =
@@ -113,6 +145,8 @@ public sealed class SqliteSchemaInitializer
             height integer null,
             sha256 text not null,
             revised_prompt text null,
+            image_base64 text null,
+            source_url text null,
             created_at text not null
         );
 
@@ -151,6 +185,25 @@ public sealed class SqliteSchemaInitializer
             created_at text not null
         );
 
+        create table if not exists chat_conversations (
+            id text primary key,
+            title text not null,
+            backend_profile_id text null references backend_profiles(id) on delete set null,
+            model text not null,
+            created_at text not null,
+            updated_at text not null,
+            deleted_at text null
+        );
+
+        create table if not exists chat_messages (
+            id integer primary key autoincrement,
+            conversation_id text not null references chat_conversations(id) on delete cascade,
+            role text not null,
+            content text not null,
+            raw_json text null,
+            created_at text not null
+        );
+
         create table if not exists app_settings (
             key text primary key,
             value text not null,
@@ -160,5 +213,7 @@ public sealed class SqliteSchemaInitializer
         create index if not exists ix_generation_tasks_created_at on generation_tasks(created_at desc);
         create index if not exists ix_generation_outputs_task_id on generation_outputs(task_id);
         create index if not exists ix_agent_events_agent_run_round on agent_events(agent_run_id, round);
+        create index if not exists ix_chat_conversations_updated_at on chat_conversations(updated_at desc);
+        create index if not exists ix_chat_messages_conversation_id on chat_messages(conversation_id, id);
         ";
 }

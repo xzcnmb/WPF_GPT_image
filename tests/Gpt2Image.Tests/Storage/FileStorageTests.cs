@@ -1,3 +1,4 @@
+using System.Text;
 using Gpt2Image.Core.Storage;
 
 namespace Gpt2Image.Tests.Storage;
@@ -20,6 +21,25 @@ public sealed class FileStorageTests : IDisposable
         Assert.Equal("image/png", output.MimeType);
         Assert.Equal("final", output.OutputRole);
         Assert.Equal("7F47B756761A46E6D4A4D96F0D8A4448F8449235009D1F3AD1493F5C773C19E8", output.Sha256);
+    }
+
+    [Fact]
+    public void SaveInputAsset_copies_file_into_inputs_directory()
+    {
+        Directory.CreateDirectory(_root);
+        var paths = AppPaths.CreateForRoot(_root);
+        var storage = new LocalImageStorage(paths, new FixedClock(new DateTimeOffset(2026, 6, 6, 13, 0, 0, TimeSpan.Zero)));
+        var sourcePath = Path.Combine(_root, "source.png");
+        var bytes = Encoding.ASCII.GetBytes("fake-png");
+        File.WriteAllBytes(sourcePath, bytes);
+
+        var asset = storage.SaveInputAsset(sourcePath);
+
+        Assert.True(File.Exists(asset.FilePath));
+        Assert.Contains(Path.Combine("images", "inputs", "2026", "06", "06"), asset.FilePath);
+        Assert.Equal("image/png", asset.MimeType);
+        Assert.Equal(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)), asset.Sha256);
+        Assert.NotEqual(sourcePath, asset.FilePath);
     }
 
     public void Dispose()
