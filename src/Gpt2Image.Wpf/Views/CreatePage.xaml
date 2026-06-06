@@ -70,6 +70,71 @@
                                          Visibility="{Binding IsOptimizingPrompt, Converter={StaticResource BoolToVisibilityConverter}}"
                                          Margin="0,0,0,14" />
 
+                            <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="#F8FAFC" Padding="10" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="参考图 / 编辑图" FontWeight="SemiBold" />
+                                            <TextBlock Text="上传后将使用图片编辑/参考图模式，需后端支持图片编辑。" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="添加图片" Command="{Binding AddInputImagesCommand}" Padding="8,4" Margin="0,0,6,0" />
+                                            <Button Content="清空" Command="{Binding ClearInputImagesCommand}" Padding="8,4" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <ItemsControl ItemsSource="{Binding InputImages}" Margin="0,0,0,8">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Width="132" BorderBrush="#E2E8F0" BorderThickness="1" Background="#FFFFFF" Padding="6" Margin="0,0,8,8">
+                                                    <StackPanel>
+                                                        <Image Source="{Binding PreviewSource, Converter={StaticResource Base64ImageSourceConverter}}" Height="76" Stretch="Uniform" />
+                                                        <TextBlock Text="{Binding FileName}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,5,0,2" />
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Text="{Binding SizeText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" />
+                                                            <Button Grid.Column="1"
+                                                                    Content="删除"
+                                                                    Command="{Binding DataContext.RemoveInputImageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Padding="5,2"
+                                                                    FontSize="11" />
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="蒙版（可选）" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding MaskImage.FileName, TargetNullValue=未选择蒙版}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="选择蒙版" Command="{Binding SelectMaskImageCommand}" Padding="8,4" Margin="0,0,6,0" />
+                                            <Button Content="清除" Command="{Binding ClearMaskImageCommand}" Padding="8,4" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />

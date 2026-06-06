@@ -39,6 +39,8 @@ public partial class App
                 services.AddSingleton<ISecretProtector, DpapiSecretProtector>();
                 services.AddSingleton<BackendProfileRepository>();
                 services.AddSingleton<GenerationTaskRepository>();
+                services.AddSingleton<ChatRepository>();
+                services.AddSingleton<InputAssetRepository>();
                 services.AddSingleton<LocalImageStorage>();
                 services.AddSingleton<IGenerationQueue>(_ => new GenerationQueue(new GenerationQueueOptions(GlobalConcurrency: 2)));
                 services.AddHttpClient<IImageGenerationClient, OpenAiCompatibleImageClient>()
@@ -50,6 +52,7 @@ public partial class App
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddTransient<CreatePageViewModel>();
                 services.AddTransient<AgentPageViewModel>();
+                services.AddTransient<ChatPageViewModel>();
                 services.AddTransient<HistoryPageViewModel>();
                 services.AddSingleton<SettingsPageViewModel>();
                 services.AddSingleton<MainWindow>();

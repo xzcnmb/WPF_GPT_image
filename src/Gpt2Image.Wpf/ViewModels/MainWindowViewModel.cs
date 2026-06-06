@@ -8,6 +8,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly CreatePageViewModel _create;
     private readonly AgentPageViewModel _agent;
+    private readonly ChatPageViewModel _chat;
     private readonly HistoryPageViewModel _history;
     private readonly SettingsPageViewModel _settings;
 
@@ -22,11 +23,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         CreatePageViewModel create,
         AgentPageViewModel agent,
+        ChatPageViewModel chat,
         HistoryPageViewModel history,
         SettingsPageViewModel settings)
     {
         _create = create;
         _agent = agent;
+        _chat = chat;
         _history = history;
         _settings = settings;
         _currentPage = _create;
@@ -37,6 +40,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [RelayCommand]
     private void ShowAgent() => CurrentPage = _agent;
+
+    [RelayCommand]
+    private void ShowChat()
+    {
+        _chat.RefreshConversations();
+        CurrentPage = _chat;
+    }
 
     [RelayCommand]
     private void ShowHistory()

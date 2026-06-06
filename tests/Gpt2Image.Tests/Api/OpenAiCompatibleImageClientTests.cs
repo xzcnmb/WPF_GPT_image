@@ -1,4 +1,6 @@
+using System.IO;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using Gpt2Image.Core.Api;
 using Gpt2Image.Core.Models;
@@ -347,6 +349,129 @@ public sealed class OpenAiCompatibleImageClientTests
     }
 
     [Fact]
+    public async Task GenerateAsync_posts_images_edit_multipart_when_input_image_is_present()
+    {
+        var imagePath = CreateTempImageFile("edit.png", Encoding.ASCII.GetBytes("fake-image"));
+        try
+        {
+            var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"data\":[{\"b64_json\":\"aW1hZ2U=\",\"revised_prompt\":\"edited prompt\"}]}",
+                    Encoding.UTF8,
+                    "application/json")
+            });
+            var client = new OpenAiCompatibleImageClient(new HttpClient(handler));
+
+            var result = await client.GenerateAsync(TestProfile(), new ImageGenerationRequest
+            {
+                Prompt = "edit this image",
+                Images = new[] { new ImageInputAsset { FilePath = imagePath, MimeType = "image/png" } },
+                Count = 1
+            }, CancellationToken.None);
+
+            Assert.Equal("https://example.test/v1/images/edits", handler.Request!.RequestUri!.ToString());
+            Assert.Equal("multipart/form-data", handler.Request.Content!.Headers.ContentType!.MediaType);
+            Assert.Equal("aW1hZ2U=", result.Images.Single().Base64);
+        }
+        finally
+        {
+            File.Delete(imagePath);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAsync_posts_responses_protocol_with_input_image_data_url()
+    {
+        var imagePath = CreateTempImageFile("input.png", Encoding.ASCII.GetBytes("fake-image"));
+        try
+        {
+            var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"object\":\"response\",\"output\":[{\"type\":\"image_generation_call\",\"result\":\"cmVzcG9uc2U=\"}]}",
+                    Encoding.UTF8,
+                    "application/json")
+            });
+            var client = new OpenAiCompatibleImageClient(new HttpClient(handler));
+
+            await client.GenerateAsync(TestProfile(protocol: BackendProtocol.OpenAiResponses), new ImageGenerationRequest
+            {
+                Prompt = "use this image",
+                Images = new[] { new ImageInputAsset { FilePath = imagePath, MimeType = "image/png" } },
+                Count = 1
+            }, CancellationToken.None);
+
+            Assert.Contains("\"input_image\"", handler.RequestBody!);
+            Assert.Contains("data:image/png;base64,", handler.RequestBody!);
+        }
+        finally
+        {
+            File.Delete(imagePath);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAsync_posts_chat_completions_protocol_with_multimodal_input_image()
+    {
+        var imagePath = CreateTempImageFile("chat.png", Encoding.ASCII.GetBytes("fake-image"));
+        try
+        {
+            var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"choices\":[{\"message\":{\"content\":\"![image_1](data:image/png;base64,Y2hhdA==)\"}}]}",
+                    Encoding.UTF8,
+                    "application/json")
+            });
+            var client = new OpenAiCompatibleImageClient(new HttpClient(handler));
+
+            await client.GenerateAsync(TestProfile(protocol: BackendProtocol.ChatCompletionsImageJson), new ImageGenerationRequest
+            {
+                Prompt = "describe and edit",
+                Images = new[] { new ImageInputAsset { FilePath = imagePath, MimeType = "image/png" } },
+                Count = 1
+            }, CancellationToken.None);
+
+            Assert.Contains("\"type\":\"image_url\"", handler.RequestBody!);
+            Assert.Contains("data:image/png;base64,", handler.RequestBody!);
+        }
+        finally
+        {
+            File.Delete(imagePath);
+        }
+    }
+
+    [Fact]
+    public async Task ChatAsync_posts_chat_completions_and_parses_assistant_text()
+    {
+        var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                "{\"choices\":[{\"message\":{\"content\":\"你好，我是助手\"}}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":5,\"total_tokens\":15}}",
+                Encoding.UTF8,
+                "application/json")
+        });
+        var client = new OpenAiCompatibleImageClient(new HttpClient(handler));
+
+        var result = await client.ChatAsync(TestProfile(), new ChatRequest
+        {
+            Model = "gpt-4o-mini",
+            Messages = new[]
+            {
+                new ChatMessage { Role = "user", Content = "你好" }
+            }
+        }, CancellationToken.None);
+
+        Assert.Equal("https://example.test/v1/chat/completions", handler.Request!.RequestUri!.ToString());
+        Assert.Contains("\"messages\":[{\"role\":\"user\",\"content\":\"你好\"}]", handler.RequestBody!);
+        Assert.Equal("你好，我是助手", result.Content);
+        Assert.Equal(10, result.Usage?.InputTokens);
+        Assert.Equal(5, result.Usage?.OutputTokens);
+        Assert.Equal(15, result.Usage?.TotalTokens);
+    }
+
+    [Fact]
     public async Task StreamResponsesAsync_emits_partial_and_final_image_events()
     {
         var stream = string.Join("\n", new[]
@@ -382,6 +507,13 @@ public sealed class OpenAiCompatibleImageClientTests
         Assert.Contains(events, e => e.Kind == ImageStreamEventKind.PartialImage && e.Base64 == "cGFydGlhbA==");
         Assert.Contains(events, e => e.Kind == ImageStreamEventKind.FinalImage && e.Base64 == "ZmluYWw=");
         Assert.Contains(events, e => e.Kind == ImageStreamEventKind.Completed && e.ResponseId == "resp_1");
+    }
+
+    private static string CreateTempImageFile(string fileName, byte[] bytes)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}_{fileName}");
+        File.WriteAllBytes(path, bytes);
+        return path;
     }
 
     private static BackendProfile TestProfile(

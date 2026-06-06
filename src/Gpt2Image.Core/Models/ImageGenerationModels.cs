@@ -9,7 +9,7 @@ public sealed class ImageGenerationRequest
     public string? Model { get; init; }
     public string Size { get; init; } = "1024x1024";
     public string Quality { get; init; } = "auto";
-    public string ResponseFormat { get; init; } = "url";
+    public string ResponseFormat { get; init; } = "b64_json";
     public string OutputFormat { get; init; } = "png";
     public int? OutputCompression { get; init; }
     public string Background { get; init; } = "auto";

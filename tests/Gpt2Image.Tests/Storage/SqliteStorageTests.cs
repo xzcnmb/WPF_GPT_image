@@ -25,7 +25,10 @@ public sealed class SqliteStorageTests : IDisposable
         Assert.Contains("backend_profiles", tables);
         Assert.Contains("generation_tasks", tables);
         Assert.Contains("generation_outputs", tables);
+        Assert.Contains("input_assets", tables);
         Assert.Contains("agent_events", tables);
+        Assert.Contains("chat_conversations", tables);
+        Assert.Contains("chat_messages", tables);
         Assert.Contains("schema_migrations", tables);
         Assert.Equal("wal", connection.ExecuteScalar<string>("PRAGMA journal_mode"));
     }

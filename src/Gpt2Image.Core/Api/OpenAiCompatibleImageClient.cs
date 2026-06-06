@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Net.Http.Headers;
 using Gpt2Image.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +19,7 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
     private static readonly TimeSpan DefaultGenerationTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DefaultResponseReadTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DefaultPromptOptimizationTimeout = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan DefaultChatTimeout = TimeSpan.FromMinutes(3);
     private static readonly Regex DataImageRegex = new(
         "data:image/[^;]+;base64,(?<base64>[A-Za-z0-9+/=]+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -51,9 +54,7 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
 
         try
         {
-            var requestBody = message.Content is null
-                ? ""
-                : await message.Content.ReadAsStringAsync(requestToken).ConfigureAwait(false);
+            var requestBody = await DescribeRequestContentAsync(message, requestToken).ConfigureAwait(false);
             _logger?.LogInformation(
                 "发送生图请求，协议 {Protocol}，地址 {RequestUri}，模型 {Model}，请求体 {RequestBody}",
                 protocol,
@@ -120,6 +121,20 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
                 };
             }
 
+            try
+            {
+                outputs = await ResolveRemoteUrlOutputsAsync(outputs, message.RequestUri, requestToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger?.LogWarning(ex, "图片 URL 下载失败，协议 {Protocol}，地址 {RequestUri}", protocol, message.RequestUri);
+                return new GenerationResult
+                {
+                    Status = "failed",
+                    Error = ex.Message
+                };
+            }
+
             return new GenerationResult
             {
                 Images = outputs,
@@ -159,6 +174,22 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         }
     }
 
+    private static async Task<string> DescribeRequestContentAsync(HttpRequestMessage message, CancellationToken cancellationToken)
+    {
+        if (message.Content is null)
+        {
+            return "";
+        }
+
+        if (message.Content is MultipartFormDataContent)
+        {
+            var contentType = message.Content.Headers.ContentType?.ToString() ?? "multipart/form-data";
+            return $"<{contentType}; multipart body omitted>";
+        }
+
+        return await message.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<string> ReadResponseContentAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -196,6 +227,102 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         var model = NormalizeMainlineModel(profile.MainlineModel);
         return await OptimizePromptWithModelAsync(profile, prompt, model, allowAutoRetry: true, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    public async Task<ChatResult> ChatAsync(
+        BackendProfile profile,
+        ChatRequest request,
+        CancellationToken cancellationToken)
+    {
+        var messages = request.Messages
+            .Where(message => !string.IsNullOrWhiteSpace(message.Content))
+            .Select(message => new
+            {
+                role = NormalizeChatRole(message.Role),
+                content = message.Content
+            })
+            .ToArray();
+        if (messages.Length == 0)
+        {
+            return new ChatResult { Error = "消息内容为空" };
+        }
+
+        var model = string.IsNullOrWhiteSpace(request.Model)
+            ? NormalizeMainlineModel(profile.MainlineModel)
+            : request.Model.Trim();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(DefaultChatTimeout);
+        var requestToken = timeoutCts.Token;
+        using var message = CreateJsonRequest(profile, "chat/completions", BackendProtocol.ChatCompletionsImageJson, new
+        {
+            model,
+            messages,
+            temperature = 0.7
+        });
+
+        try
+        {
+            var requestBody = message.Content is null
+                ? ""
+                : await message.Content.ReadAsStringAsync(requestToken).ConfigureAwait(false);
+            _logger?.LogInformation(
+                "发送聊天请求，地址 {RequestUri}，模型 {Model}，请求体 {RequestBody}",
+                message.RequestUri,
+                model,
+                requestBody);
+
+            var stopwatch = Stopwatch.StartNew();
+            using var response = await _httpClient.SendAsync(message, requestToken).ConfigureAwait(false);
+            var content = await response.Content.ReadAsStringAsync(requestToken).ConfigureAwait(false);
+            stopwatch.Stop();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = BuildFailureMessage(response, content);
+                _logger?.LogWarning("聊天请求失败，HTTP {StatusCode}，错误 {Error}", (int)response.StatusCode, error);
+                return new ChatResult { Error = error, RawJson = content };
+            }
+
+            if (!TryParseJson(content, out var document))
+            {
+                var error = BuildChatNonJsonDiagnostic(response, content);
+                _logger?.LogWarning("聊天接口返回非 JSON 响应，地址 {RequestUri}，响应片段 {Snippet}", message.RequestUri, Snippet(content));
+                return new ChatResult { Error = error, RawJson = content };
+            }
+
+            using var json = document!;
+            var text = ExtractChatText(json.RootElement);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                var error = $"聊天接口未返回文本内容。响应片段：{Snippet(content)}";
+                _logger?.LogWarning("聊天接口未返回文本，地址 {RequestUri}，响应片段 {Snippet}", message.RequestUri, Snippet(content));
+                return new ChatResult { Error = error, RawJson = content };
+            }
+
+            _logger?.LogInformation(
+                "聊天完成，地址 {RequestUri}，耗时 {ElapsedSeconds:F1}s",
+                message.RequestUri,
+                stopwatch.Elapsed.TotalSeconds);
+
+            return new ChatResult
+            {
+                Content = text.Trim(),
+                RawJson = content,
+                Usage = ParseUsage(json.RootElement)
+            };
+        }
+        catch (HttpRequestException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            var error = BuildTransportFailureMessage(message.RequestUri, ex);
+            _logger?.LogWarning(ex, "聊天请求发送失败，地址 {RequestUri}", message.RequestUri);
+            return new ChatResult { Error = error };
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            var error = $"聊天请求超过 {DefaultChatTimeout.TotalMinutes:0} 分钟仍未完成，地址：{message.RequestUri}。{ex.Message}";
+            _logger?.LogWarning(ex, "聊天请求超时，地址 {RequestUri}", message.RequestUri);
+            return new ChatResult { Error = error };
+        }
     }
 
     private async Task<PromptOptimizationResult> OptimizePromptWithModelAsync(
@@ -387,6 +514,7 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         ImageGenerationRequest request,
         string protocol)
     {
+        var hasInputImages = request.Images.Count > 0 || request.Mask is not null;
         return protocol switch
         {
             BackendProtocol.OpenAiResponses => CreateJsonRequest(profile, "responses", protocol, new
@@ -397,10 +525,7 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
                     new
                     {
                         role = "user",
-                        content = new[]
-                        {
-                            new { type = "input_text", text = request.Prompt }
-                        }
+                        content = BuildResponsesInputContent(request)
                     }
                 },
                 tools = new[]
@@ -424,11 +549,12 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
                 model = request.Model ?? profile.ImageModel,
                 messages = new[]
                 {
-                    new { role = "user", content = request.Prompt }
+                    BuildChatUserMessage(request)
                 },
                 n = Math.Max(1, request.Count),
                 modalities = new[] { "image", "text" }
             }),
+            _ when hasInputImages => BuildImagesEditRequest(profile, request, protocol),
             _ => CreateJsonRequest(profile, "images/generations", protocol, BuildImagesGenerationBody(profile, request))
         };
     }
@@ -460,6 +586,160 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         }
 
         return body;
+    }
+
+    private static HttpRequestMessage BuildImagesEditRequest(
+        BackendProfile profile,
+        ImageGenerationRequest request,
+        string protocol)
+    {
+        foreach (var asset in request.Images)
+        {
+            ValidateImageAsset(asset);
+        }
+
+        if (request.Mask is not null)
+        {
+            ValidateImageAsset(request.Mask);
+        }
+
+        var responseFormat = NormalizeResponseFormat(request.ResponseFormat);
+        var message = new HttpRequestMessage(HttpMethod.Post, BuildEndpoint(profile.BaseUrl, "images/edits", protocol));
+        AddAuthorizationHeader(message, profile.ApiKey);
+        var content = new MultipartFormDataContent();
+        AddStringPart(content, "model", request.Model ?? profile.ImageModel);
+        AddStringPart(content, "prompt", request.Prompt);
+        AddStringPart(content, "n", Math.Max(1, request.Count).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        AddStringPart(content, "response_format", responseFormat);
+        AddStringPartIfNotAuto(content, "size", request.Size);
+        AddStringPartIfNotAuto(content, "quality", request.Quality);
+        AddStringPartIfNotAuto(content, "background", request.Background);
+        if (!string.Equals(responseFormat, "url", StringComparison.OrdinalIgnoreCase))
+        {
+            AddStringPartIfNotAuto(content, "output_format", request.OutputFormat);
+            if (request.OutputCompression is not null)
+            {
+                AddStringPart(content, "output_compression", request.OutputCompression.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
+
+        foreach (var asset in request.Images)
+        {
+            AddFilePart(content, "image", asset);
+        }
+
+        if (request.Mask is not null)
+        {
+            AddFilePart(content, "mask", request.Mask);
+        }
+
+        message.Content = content;
+        return message;
+    }
+
+    private static object[] BuildResponsesInputContent(ImageGenerationRequest request)
+    {
+        var content = new List<object>
+        {
+            new { type = "input_text", text = request.Prompt }
+        };
+        foreach (var image in request.Images)
+        {
+            ValidateImageAsset(image);
+            content.Add(new { type = "input_image", image_url = ReadImageAsDataUrl(image) });
+        }
+
+        if (request.Mask is not null)
+        {
+            ValidateImageAsset(request.Mask);
+            content.Add(new { type = "input_text", text = "如果后端支持蒙版，请将随后提供的图片作为编辑蒙版使用。" });
+            content.Add(new { type = "input_image", image_url = ReadImageAsDataUrl(request.Mask) });
+        }
+
+        return content.ToArray();
+    }
+
+    private static object BuildChatUserMessage(ImageGenerationRequest request)
+    {
+        if (request.Images.Count == 0 && request.Mask is null)
+        {
+            return new { role = "user", content = (object)request.Prompt };
+        }
+
+        var content = new List<object>
+        {
+            new { type = "text", text = request.Prompt }
+        };
+        foreach (var image in request.Images)
+        {
+            ValidateImageAsset(image);
+            content.Add(new { type = "image_url", image_url = new { url = ReadImageAsDataUrl(image) } });
+        }
+
+        if (request.Mask is not null)
+        {
+            ValidateImageAsset(request.Mask);
+            content.Add(new { type = "text", text = "如果后端支持蒙版，请将下一张图片作为编辑蒙版。" });
+            content.Add(new { type = "image_url", image_url = new { url = ReadImageAsDataUrl(request.Mask) } });
+        }
+
+        return new { role = "user", content = (object)content.ToArray() };
+    }
+
+    private static void AddStringPart(MultipartFormDataContent content, string name, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            content.Add(new StringContent(value), name);
+        }
+    }
+
+    private static void AddStringPartIfNotAuto(MultipartFormDataContent content, string name, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && !string.Equals(value, "auto", StringComparison.OrdinalIgnoreCase))
+        {
+            content.Add(new StringContent(value), name);
+        }
+    }
+
+    private static void AddFilePart(MultipartFormDataContent content, string name, ImageInputAsset asset)
+    {
+        var bytes = File.ReadAllBytes(asset.FilePath);
+        var fileContent = new ByteArrayContent(bytes);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse(string.IsNullOrWhiteSpace(asset.MimeType) ? GuessMimeType(asset.FilePath) : asset.MimeType);
+        content.Add(fileContent, name, Path.GetFileName(asset.FilePath));
+    }
+
+    private static string ReadImageAsDataUrl(ImageInputAsset asset)
+    {
+        var bytes = File.ReadAllBytes(asset.FilePath);
+        var mimeType = string.IsNullOrWhiteSpace(asset.MimeType) ? GuessMimeType(asset.FilePath) : asset.MimeType;
+        return $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
+    }
+
+    private static void ValidateImageAsset(ImageInputAsset asset)
+    {
+        if (string.IsNullOrWhiteSpace(asset.FilePath) || !File.Exists(asset.FilePath))
+        {
+            throw new FileNotFoundException("输入图片不存在。", asset.FilePath);
+        }
+
+        var length = new FileInfo(asset.FilePath).Length;
+        const long maxBytes = 25L * 1024 * 1024;
+        if (length > maxBytes)
+        {
+            throw new InvalidOperationException($"输入图片超过 25MB：{asset.FilePath}");
+        }
+    }
+
+    private static string GuessMimeType(string filePath)
+    {
+        return Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant() switch
+        {
+            "jpg" or "jpeg" => "image/jpeg",
+            "webp" => "image/webp",
+            _ => "image/png"
+        };
     }
 
     private static void AddIfNotAuto(IDictionary<string, object> body, string name, string? value)
@@ -523,6 +803,59 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
     private static string? NullIfAuto(string? value)
     {
         return string.Equals(value, "auto", StringComparison.OrdinalIgnoreCase) ? null : value;
+    }
+
+    private async Task<List<GeneratedImageOutput>> ResolveRemoteUrlOutputsAsync(
+        IReadOnlyList<GeneratedImageOutput> outputs,
+        Uri? requestUri,
+        CancellationToken cancellationToken)
+    {
+        var resolved = new List<GeneratedImageOutput>(outputs.Count);
+        foreach (var output in outputs)
+        {
+            if (!string.IsNullOrWhiteSpace(output.Base64) || string.IsNullOrWhiteSpace(output.Url))
+            {
+                resolved.Add(output);
+                continue;
+            }
+
+            var downloadUri = ResolveImageUri(output.Url!, requestUri);
+            using var response = await _httpClient.GetAsync(downloadUri, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"图片 URL 下载失败：HTTP {(int)response.StatusCode}，地址：{downloadUri}");
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            resolved.Add(new GeneratedImageOutput
+            {
+                Base64 = Convert.ToBase64String(bytes),
+                Url = downloadUri.ToString(),
+                Index = output.Index,
+                Size = output.Size,
+                RevisedPrompt = output.RevisedPrompt,
+                OutputRole = output.OutputRole,
+                FilePath = output.FilePath
+            });
+        }
+
+        return resolved;
+    }
+
+    private static Uri ResolveImageUri(string url, Uri? requestUri)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var absoluteUri))
+        {
+            return absoluteUri;
+        }
+
+        if (requestUri is not null)
+        {
+            var baseUri = new Uri(requestUri.GetLeftPart(UriPartial.Authority));
+            return new Uri(baseUri, url);
+        }
+
+        throw new InvalidOperationException($"无法解析图片地址：{url}");
     }
 
     private static List<GeneratedImageOutput> ResolveDataUrlOutputs(IReadOnlyList<GeneratedImageOutput> outputs)
@@ -789,6 +1122,12 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         return $"后端返回非 JSON 响应，无法解析提示词优化结果。HTTP {(int)response.StatusCode}，Content-Type: {contentType ?? "未知"}。响应片段：{Snippet(content)}。请确认主模型支持 /v1/chat/completions。";
     }
 
+    private static string BuildChatNonJsonDiagnostic(HttpResponseMessage response, string content)
+    {
+        var contentType = response.Content.Headers.ContentType?.ToString();
+        return $"后端返回非 JSON 响应，无法解析聊天结果。HTTP {(int)response.StatusCode}，Content-Type: {contentType ?? "未知"}。响应片段：{Snippet(content)}。请确认主模型支持 /v1/chat/completions。";
+    }
+
     private static string BuildTransportFailureMessage(Uri? requestUri, Exception exception)
     {
         return $"请求发送失败：{exception.Message}。地址：{requestUri}。这通常表示后端网关提前关闭连接、上游不可用，或该协议路径不被当前服务稳定支持。可以换一个接口协议或更换可用模型后重试。";
@@ -881,6 +1220,48 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         return value;
     }
 
+    private static string NormalizeChatRole(string? role)
+    {
+        var value = role?.Trim().ToLowerInvariant();
+        return value is "system" or "developer" or "assistant" ? value : "user";
+    }
+
+    private static string? ExtractChatText(JsonElement root)
+    {
+        if (root.TryGetProperty("choices", out var choices)
+            && choices.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var choice in choices.EnumerateArray())
+            {
+                if (choice.TryGetProperty("message", out var message))
+                {
+                    var content = ExtractTextContent(message, "content");
+                    if (!string.IsNullOrWhiteSpace(content))
+                    {
+                        return content;
+                    }
+                }
+
+                if (choice.TryGetProperty("delta", out var delta))
+                {
+                    var content = ExtractTextContent(delta, "content");
+                    if (!string.IsNullOrWhiteSpace(content))
+                    {
+                        return content;
+                    }
+                }
+
+                var text = GetString(choice, "text");
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    return text;
+                }
+            }
+        }
+
+        return GetString(root, "output_text") ?? GetString(root, "content");
+    }
+
     private static string? ExtractOptimizedPrompt(JsonElement root)
     {
         if (root.TryGetProperty("choices", out var choices)
@@ -969,8 +1350,8 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
 
         return new TokenUsage
         {
-            InputTokens = GetInt(usage, "input_tokens"),
-            OutputTokens = GetInt(usage, "output_tokens"),
+            InputTokens = GetInt(usage, "input_tokens") ?? GetInt(usage, "prompt_tokens"),
+            OutputTokens = GetInt(usage, "output_tokens") ?? GetInt(usage, "completion_tokens"),
             TotalTokens = GetInt(usage, "total_tokens")
         };
     }

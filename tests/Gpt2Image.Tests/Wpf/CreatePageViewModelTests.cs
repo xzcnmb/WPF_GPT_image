@@ -33,12 +33,15 @@ public sealed class CreatePageViewModelTests : IDisposable
             Priority = 0,
             IsEnabled = true
         });
-
+        var taskRepository = new GenerationTaskRepository(database);
+        var inputAssetRepository = new InputAssetRepository(database);
+        var stubClient = new StubImageGenerationClient();
         var viewModel = new CreatePageViewModel(
             profiles,
-            new GenerationTaskRepository(database),
+            taskRepository,
+            inputAssetRepository,
             new LocalImageStorage(paths, new FixedClock(new DateTimeOffset(2026, 6, 6, 12, 0, 0, TimeSpan.Zero))),
-            new StubImageGenerationClient(),
+            stubClient,
             new GenerationQueue(new GenerationQueueOptions(1)),
             NullLogger<CreatePageViewModel>.Instance);
 
@@ -54,6 +57,55 @@ public sealed class CreatePageViewModelTests : IDisposable
         Assert.EndsWith(Path.Combine("images", "2026", "06", "06", preview.FileName), preview.FilePath);
         Assert.Contains(viewModel.RunLogs, log => log.Message.Contains("请求已发送", StringComparison.Ordinal));
         Assert.Contains(viewModel.RunLogs, log => log.Message.Contains("已保存", StringComparison.Ordinal));
+        Assert.Equal("generate", stubClient.LastRequest?.Mode);
+        Assert.Empty(inputAssetRepository.ListByTaskId(viewModel.CurrentTaskId));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_with_input_image_switches_to_edit_mode_and_persists_input_asset()
+    {
+        var paths = AppPaths.CreateForRoot(_root);
+        var database = new SqliteDatabase(paths);
+        new SqliteSchemaInitializer(database).Initialize();
+        var profiles = new BackendProfileRepository(database, new PassThroughSecretProtector());
+        profiles.Upsert(new BackendProfile
+        {
+            Id = "default",
+            Name = "测试后端",
+            BaseUrl = "https://example.test/v1",
+            ApiKey = "sk-test",
+            MainlineModel = "gpt-5.5",
+            ImageModel = "gpt-image-2",
+            Concurrency = 1,
+            Priority = 0,
+            IsEnabled = true
+        });
+        var inputAssetRepository = new InputAssetRepository(database);
+        var stubClient = new StubImageGenerationClient();
+        var sourceImagePath = Path.Combine(_root, "input.png");
+        File.WriteAllBytes(sourceImagePath, new byte[] { 1, 2, 3, 4 });
+        var viewModel = new CreatePageViewModel(
+            profiles,
+            new GenerationTaskRepository(database),
+            inputAssetRepository,
+            new LocalImageStorage(paths, new FixedClock(new DateTimeOffset(2026, 6, 6, 12, 0, 0, TimeSpan.Zero))),
+            stubClient,
+            new GenerationQueue(new GenerationQueueOptions(1)),
+            NullLogger<CreatePageViewModel>.Instance);
+        viewModel.InputImages.Add(new InputAssetViewModel
+        {
+            FilePath = sourceImagePath,
+            MimeType = "image/png",
+            Sha256 = "hash",
+            ByteLength = 4
+        });
+        viewModel.Prompt = "把背景改成海边日落";
+
+        await viewModel.GenerateCommand.ExecuteAsync(null);
+
+        Assert.Equal("edit", stubClient.LastRequest?.Mode);
+        Assert.Single(stubClient.LastRequest?.Images ?? Array.Empty<ImageInputAsset>());
+        Assert.Single(inputAssetRepository.ListByTaskId(viewModel.CurrentTaskId));
     }
 
     public void Dispose()
@@ -67,8 +119,11 @@ public sealed class CreatePageViewModelTests : IDisposable
 
     private sealed class StubImageGenerationClient : IImageGenerationClient
     {
+        public ImageGenerationRequest? LastRequest { get; private set; }
+
         public Task<GenerationResult> GenerateAsync(BackendProfile profile, ImageGenerationRequest request, CancellationToken cancellationToken)
         {
+            LastRequest = request;
             return Task.FromResult(new GenerationResult
             {
                 Images = new[]

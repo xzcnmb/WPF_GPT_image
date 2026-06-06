@@ -28,6 +28,17 @@ public sealed class Base64ImageSourceConverter : IValueConverter
                 return remoteImage;
             }
 
+            if (File.Exists(source))
+            {
+                var localImage = new BitmapImage();
+                localImage.BeginInit();
+                localImage.CacheOption = BitmapCacheOption.OnLoad;
+                localImage.UriSource = new Uri(source, UriKind.Absolute);
+                localImage.EndInit();
+                localImage.Freeze();
+                return localImage;
+            }
+
             var base64 = source;
             var commaIndex = base64.IndexOf(',');
             if (commaIndex >= 0)

@@ -35,6 +35,13 @@ public sealed class SqliteSchemaInitializer
             transaction);
         connection.Execute(
             @"
+            insert or ignore into schema_migrations (version, applied_at)
+            values (3, @AppliedAt)
+            ",
+            new { AppliedAt = DateTimeOffset.UtcNow.ToString("O") },
+            transaction);
+        connection.Execute(
+            @"
             update generation_tasks
             set status = 'interrupted',
                 error = coalesce(error, 'Application exited before this task completed.'),
@@ -178,6 +185,25 @@ public sealed class SqliteSchemaInitializer
             created_at text not null
         );
 
+        create table if not exists chat_conversations (
+            id text primary key,
+            title text not null,
+            backend_profile_id text null references backend_profiles(id) on delete set null,
+            model text not null,
+            created_at text not null,
+            updated_at text not null,
+            deleted_at text null
+        );
+
+        create table if not exists chat_messages (
+            id integer primary key autoincrement,
+            conversation_id text not null references chat_conversations(id) on delete cascade,
+            role text not null,
+            content text not null,
+            raw_json text null,
+            created_at text not null
+        );
+
         create table if not exists app_settings (
             key text primary key,
             value text not null,
@@ -187,5 +213,7 @@ public sealed class SqliteSchemaInitializer
         create index if not exists ix_generation_tasks_created_at on generation_tasks(created_at desc);
         create index if not exists ix_generation_outputs_task_id on generation_outputs(task_id);
         create index if not exists ix_agent_events_agent_run_round on agent_events(agent_run_id, round);
+        create index if not exists ix_chat_conversations_updated_at on chat_conversations(updated_at desc);
+        create index if not exists ix_chat_messages_conversation_id on chat_messages(conversation_id, id);
         ";
 }
