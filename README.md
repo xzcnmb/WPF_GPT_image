@@ -12,6 +12,10 @@
 - 新增 Chat 对话页面，聊天记录持久化到 SQLite
 - 本地 SQLite 历史记录
 - 图片预览、自动保存、手动另存为和运行日志
+ - 新增文生视频流程，支持提交任务、轮询状态、在线播放生成结果
+ - 新增视频结果操作：另存为、复制链接、打开文件、打开文件夹、复制路径
+ - 优化视频播放器底部按钮，修复深色背景下按钮看不清的问题
+- 优化全局按钮视觉样式，提升层级和交互反馈
 
 ## 页面说明
 
@@ -55,10 +59,7 @@ dotnet build E:\WPF_GptImage\src\Gpt2Image.Wpf\Gpt2Image.Wpf.csproj
 dotnet test E:\WPF_GptImage\tests\Gpt2Image.Tests\Gpt2Image.Tests.csproj
 ```
 
-## 测试
 
-```powershell
-dotnet test .\Gpt2ImageWpf.sln
 ```
 
 ## 本地数据
