@@ -14,7 +14,12 @@
             <SolidColorBrush x:Key="ShellBrush" Color="#F8FAFC" />
             <SolidColorBrush x:Key="SubtleBorderBrush" Color="#DDE3EA" />
             <SolidColorBrush x:Key="AccentBrush" Color="#0F766E" />
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#115E59" />
             <SolidColorBrush x:Key="AccentSoftBrush" Color="#DDF7F2" />
+            <SolidColorBrush x:Key="AccentSoftHoverBrush" Color="#C8F1E9" />
+            <SolidColorBrush x:Key="ControlSurfaceBrush" Color="#F8FFFE" />
+            <SolidColorBrush x:Key="ControlSurfaceHoverBrush" Color="#ECFDF9" />
+            <SolidColorBrush x:Key="ActionButtonBorderBrush" Color="#9BCDC8" />
             <SolidColorBrush x:Key="TextPrimaryBrush" Color="#111827" />
             <SolidColorBrush x:Key="TextSecondaryBrush" Color="#64748B" />
             <SolidColorBrush x:Key="DangerBrush" Color="#DC2626" />
@@ -67,20 +72,65 @@
                 <Setter Property="MinHeight" Value="36" />
                 <Setter Property="Padding" Value="14,7" />
                 <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Background" Value="{StaticResource ControlSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource ActionButtonBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1.2" />
+                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource ControlSurfaceHoverBrush}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </Trigger>
+                </Style.Triggers>
             </Style>
 
             <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
                 <Setter Property="MinHeight" Value="36" />
-                <Setter Property="Padding" Value="16,7" />
+                <Setter Property="Padding" Value="18,8" />
                 <Setter Property="Background" Value="{StaticResource AccentBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Foreground" Value="#FFFFFF" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </Trigger>
+                </Style.Triggers>
             </Style>
 
             <Style x:Key="SmallActionButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
                 <Setter Property="MinHeight" Value="30" />
-                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Padding" Value="10,4" />
                 <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Background" Value="{StaticResource ShellBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SubtleBorderBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{StaticResource AccentSoftHoverBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </Trigger>
+                </Style.Triggers>
             </Style>
 
             <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
