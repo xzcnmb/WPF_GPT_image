@@ -42,6 +42,26 @@ public sealed class FileStorageTests : IDisposable
         Assert.NotEqual(sourcePath, asset.FilePath);
     }
 
+    [Fact]
+    public async Task SaveVideoStreamAsync_writes_dated_output_and_uses_unique_file_name()
+    {
+        var paths = AppPaths.CreateForRoot(_root);
+        var storage = new LocalMediaStorage(paths, new FixedClock(new DateTimeOffset(2026, 6, 6, 12, 0, 0, TimeSpan.Zero)));
+
+        await using var firstStream = new MemoryStream(Encoding.ASCII.GetBytes("first-video"));
+        var first = await storage.SaveVideoStreamAsync("task-1", 0, firstStream, "video/mp4", CancellationToken.None);
+        await using var secondStream = new MemoryStream(Encoding.ASCII.GetBytes("second-video"));
+        var second = await storage.SaveVideoStreamAsync("task-1", 0, secondStream, "video/mp4", CancellationToken.None);
+
+        Assert.True(File.Exists(first.FilePath));
+        Assert.True(File.Exists(second.FilePath));
+        Assert.EndsWith(Path.Combine("videos", "2026", "06", "06", "task-1_0.mp4"), first.FilePath);
+        Assert.EndsWith(Path.Combine("videos", "2026", "06", "06", "task-1_0_1.mp4"), second.FilePath);
+        Assert.NotEqual(first.Sha256, second.Sha256);
+        Assert.Equal(11, first.ByteLength);
+        Assert.Equal(12, second.ByteLength);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

@@ -17,8 +17,9 @@ public sealed class SqliteSchemaInitializer
         connection.Execute("PRAGMA journal_mode = WAL;");
         using var transaction = connection.BeginTransaction();
         connection.Execute(SchemaSql, transaction: transaction);
-        EnsureBackendProfileProtocolColumn(connection, transaction);
+        EnsureBackendProfileColumns(connection, transaction);
         EnsureGenerationOutputColumns(connection, transaction);
+        EnsureChatAttachmentColumns(connection, transaction);
         connection.Execute(
             @"
             insert or ignore into schema_migrations (version, applied_at)
@@ -53,7 +54,7 @@ public sealed class SqliteSchemaInitializer
         transaction.Commit();
     }
 
-    private static void EnsureBackendProfileProtocolColumn(
+    private static void EnsureBackendProfileColumns(
         System.Data.IDbConnection connection,
         System.Data.IDbTransaction transaction)
     {
@@ -61,13 +62,83 @@ public sealed class SqliteSchemaInitializer
                 "select name from pragma_table_info('backend_profiles')",
                 transaction: transaction)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (columns.Contains("protocol"))
+        if (!columns.Contains("protocol"))
+        {
+            connection.Execute(
+                "alter table backend_profiles add column protocol text not null default 'openai-images';",
+                transaction: transaction);
+        }
+
+        if (!columns.Contains("video_model"))
+        {
+            connection.Execute(
+                "alter table backend_profiles add column video_model text not null default '';",
+                transaction: transaction);
+        }
+
+        EnsureIntegerColumn(connection, transaction, columns, "supports_prompt", "1");
+        EnsureIntegerColumn(connection, transaction, columns, "supports_chat", "1");
+        EnsureIntegerColumn(connection, transaction, columns, "supports_image", "1");
+        EnsureIntegerColumn(connection, transaction, columns, "supports_video", "0");
+        EnsureIntegerColumn(connection, transaction, columns, "supports_agent", "0");
+
+        connection.Execute(
+            @"
+            update backend_profiles
+            set supports_prompt = 0,
+                supports_chat = 0,
+                supports_image = 0,
+                supports_video = 1,
+                supports_agent = 0
+            where lower(protocol) = 'routin-xai-video'
+            ",
+            transaction: transaction);
+        connection.Execute(
+            @"
+            update backend_profiles
+            set supports_agent = 1
+            where lower(protocol) = 'openai-responses'
+            ",
+            transaction: transaction);
+    }
+
+    private static void EnsureIntegerColumn(
+        System.Data.IDbConnection connection,
+        System.Data.IDbTransaction transaction,
+        ISet<string> columns,
+        string columnName,
+        string defaultValue)
+    {
+        if (columns.Contains(columnName))
         {
             return;
         }
 
         connection.Execute(
-            "alter table backend_profiles add column protocol text not null default 'openai-images';",
+            $"alter table backend_profiles add column {columnName} integer not null default {defaultValue};",
+            transaction: transaction);
+    }
+
+    private static void EnsureChatAttachmentColumns(
+        System.Data.IDbConnection connection,
+        System.Data.IDbTransaction transaction)
+    {
+        connection.Execute(
+            @"
+            create table if not exists chat_message_attachments (
+                id integer primary key autoincrement,
+                message_id integer not null references chat_messages(id) on delete cascade,
+                conversation_id text not null references chat_conversations(id) on delete cascade,
+                file_path text not null,
+                file_name text not null,
+                mime_type text not null,
+                sha256 text not null,
+                byte_length integer not null default 0,
+                created_at text not null
+            );
+            create index if not exists ix_chat_message_attachments_message_id on chat_message_attachments(message_id);
+            create index if not exists ix_chat_message_attachments_conversation_id on chat_message_attachments(conversation_id);
+            ",
             transaction: transaction);
     }
 
@@ -93,6 +164,34 @@ public sealed class SqliteSchemaInitializer
                 "alter table generation_outputs add column source_url text null;",
                 transaction: transaction);
         }
+
+        if (!columns.Contains("media_type"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column media_type text not null default 'image';",
+                transaction: transaction);
+        }
+
+        if (!columns.Contains("duration_seconds"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column duration_seconds real null;",
+                transaction: transaction);
+        }
+
+        if (!columns.Contains("provider_request_id"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column provider_request_id text null;",
+                transaction: transaction);
+        }
+
+        if (!columns.Contains("metadata_json"))
+        {
+            connection.Execute(
+                "alter table generation_outputs add column metadata_json text null;",
+                transaction: transaction);
+        }
     }
 
     private const string SchemaSql =
@@ -110,9 +209,15 @@ public sealed class SqliteSchemaInitializer
             api_key_ciphertext text not null,
             mainline_model text not null,
             image_model text not null,
+            video_model text not null default '',
             concurrency integer not null default 1,
             priority integer not null default 0,
             is_enabled integer not null default 1,
+            supports_prompt integer not null default 1,
+            supports_chat integer not null default 1,
+            supports_image integer not null default 1,
+            supports_video integer not null default 0,
+            supports_agent integer not null default 0,
             failure_cooldown_until text null,
             created_at text not null,
             updated_at text not null
@@ -147,6 +252,10 @@ public sealed class SqliteSchemaInitializer
             revised_prompt text null,
             image_base64 text null,
             source_url text null,
+            media_type text not null default 'image',
+            duration_seconds real null,
+            provider_request_id text null,
+            metadata_json text null,
             created_at text not null
         );
 
@@ -204,6 +313,18 @@ public sealed class SqliteSchemaInitializer
             created_at text not null
         );
 
+        create table if not exists chat_message_attachments (
+            id integer primary key autoincrement,
+            message_id integer not null references chat_messages(id) on delete cascade,
+            conversation_id text not null references chat_conversations(id) on delete cascade,
+            file_path text not null,
+            file_name text not null,
+            mime_type text not null,
+            sha256 text not null,
+            byte_length integer not null default 0,
+            created_at text not null
+        );
+
         create table if not exists app_settings (
             key text primary key,
             value text not null,
@@ -215,5 +336,7 @@ public sealed class SqliteSchemaInitializer
         create index if not exists ix_agent_events_agent_run_round on agent_events(agent_run_id, round);
         create index if not exists ix_chat_conversations_updated_at on chat_conversations(updated_at desc);
         create index if not exists ix_chat_messages_conversation_id on chat_messages(conversation_id, id);
+        create index if not exists ix_chat_message_attachments_message_id on chat_message_attachments(message_id);
+        create index if not exists ix_chat_message_attachments_conversation_id on chat_message_attachments(conversation_id);
         ";
 }

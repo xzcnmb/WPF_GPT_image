@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Gpt2Image.Wpf.ViewModels;
 
 namespace Gpt2Image.Wpf.Views;
@@ -33,7 +34,25 @@ public partial class SettingsPage
 
     private void OnDataContextChanged(object sender, System.Windows.DependencyPropertyChangedEventArgs e)
     {
+        if (e.OldValue is INotifyPropertyChanged oldViewModel)
+        {
+            oldViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        if (e.NewValue is INotifyPropertyChanged newViewModel)
+        {
+            newViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        }
+
         SyncPasswordFromViewModel();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsPageViewModel.ApiKey))
+        {
+            SyncPasswordFromViewModel();
+        }
     }
 
     private void SyncPasswordFromViewModel()

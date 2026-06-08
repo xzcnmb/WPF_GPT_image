@@ -105,6 +105,7 @@ public sealed class ChatRepository
     public long AddMessage(ChatMessage message)
     {
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
         connection.Execute(
             @"
             insert into chat_messages (
@@ -121,14 +122,22 @@ public sealed class ChatRepository
                 message.Content,
                 message.RawJson,
                 CreatedAt = message.CreatedAt.ToString("O")
-            });
-        return connection.ExecuteScalar<long>("select last_insert_rowid()");
+            },
+            transaction);
+        var messageId = connection.ExecuteScalar<long>("select last_insert_rowid()", transaction: transaction);
+        foreach (var attachment in message.Attachments)
+        {
+            AddAttachment(connection, transaction, messageId, message.ConversationId, attachment, message.CreatedAt);
+        }
+
+        transaction.Commit();
+        return messageId;
     }
 
     public IReadOnlyList<ChatMessage> ListMessages(string conversationId)
     {
         using var connection = _database.OpenConnection();
-        return connection.Query<ChatMessageRow>(
+        var messages = connection.Query<ChatMessageRow>(
                 @"
                 select
                     id as Id,
@@ -144,6 +153,43 @@ public sealed class ChatRepository
                 new { ConversationId = conversationId })
             .Select(row => row.ToModel())
             .ToList();
+        if (messages.Count == 0)
+        {
+            return messages;
+        }
+
+        var attachments = connection.Query<ChatAttachmentRow>(
+                @"
+                select
+                    id as Id,
+                    message_id as MessageId,
+                    conversation_id as ConversationId,
+                    file_path as FilePath,
+                    file_name as FileName,
+                    mime_type as MimeType,
+                    sha256 as Sha256,
+                    byte_length as ByteLength,
+                    created_at as CreatedAt
+                from chat_message_attachments
+                where conversation_id = @ConversationId
+                order by id
+                ",
+                new { ConversationId = conversationId })
+            .Select(row => row.ToModel())
+            .GroupBy(attachment => attachment.MessageId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<ChatAttachment>)group.ToList());
+
+        return messages.Select(message => new ChatMessage
+            {
+                Id = message.Id,
+                ConversationId = message.ConversationId,
+                Role = message.Role,
+                Content = message.Content,
+                Attachments = attachments.TryGetValue(message.Id, out var list) ? list : Array.Empty<ChatAttachment>(),
+                RawJson = message.RawJson,
+                CreatedAt = message.CreatedAt
+            })
+            .ToList();
     }
 
     public void SoftDeleteConversation(string id)
@@ -158,6 +204,37 @@ public sealed class ChatRepository
             where id = @Id and deleted_at is null
             ",
             new { Id = id, DeletedAt = now });
+    }
+
+    private static void AddAttachment(
+        System.Data.IDbConnection connection,
+        System.Data.IDbTransaction transaction,
+        long messageId,
+        string conversationId,
+        ChatAttachment attachment,
+        DateTimeOffset fallbackCreatedAt)
+    {
+        connection.Execute(
+            @"
+            insert into chat_message_attachments (
+                message_id, conversation_id, file_path, file_name, mime_type, sha256, byte_length, created_at
+            )
+            values (
+                @MessageId, @ConversationId, @FilePath, @FileName, @MimeType, @Sha256, @ByteLength, @CreatedAt
+            )
+            ",
+            new
+            {
+                MessageId = messageId,
+                ConversationId = conversationId,
+                attachment.FilePath,
+                FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(attachment.FilePath) : attachment.FileName,
+                attachment.MimeType,
+                attachment.Sha256,
+                attachment.ByteLength,
+                CreatedAt = (attachment.CreatedAt == default ? fallbackCreatedAt : attachment.CreatedAt).ToString("O")
+            },
+            transaction);
     }
 
     private sealed class ChatConversationRow
@@ -196,6 +273,32 @@ public sealed class ChatRepository
             Role = Role,
             Content = Content,
             RawJson = RawJson,
+            CreatedAt = DateTimeOffset.Parse(CreatedAt)
+        };
+    }
+
+    private sealed class ChatAttachmentRow
+    {
+        public long Id { get; init; }
+        public long MessageId { get; init; }
+        public string ConversationId { get; init; } = "";
+        public string FilePath { get; init; } = "";
+        public string FileName { get; init; } = "";
+        public string MimeType { get; init; } = "";
+        public string Sha256 { get; init; } = "";
+        public long ByteLength { get; init; }
+        public string CreatedAt { get; init; } = "";
+
+        public ChatAttachment ToModel() => new()
+        {
+            Id = Id,
+            MessageId = MessageId,
+            ConversationId = ConversationId,
+            FilePath = FilePath,
+            FileName = FileName,
+            MimeType = MimeType,
+            Sha256 = Sha256,
+            ByteLength = ByteLength,
             CreatedAt = DateTimeOffset.Parse(CreatedAt)
         };
     }

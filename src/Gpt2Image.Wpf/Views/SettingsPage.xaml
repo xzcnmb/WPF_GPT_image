@@ -8,7 +8,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Margin="0,0,0,18">
-            <TextBlock Text="设置" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Text="设置" Style="{StaticResource PageTitleTextStyle}" />
             <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,5,0,0" />
         </StackPanel>
 
@@ -27,12 +27,29 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <StackPanel Margin="0,0,0,16">
                             <TextBlock Text="连接" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="按用途分别保存 API：润色/对话、图片生成、视频生成互不抢占。" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
                         </StackPanel>
 
                         <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="配置用途" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1">
+                                <ComboBox ItemsSource="{Binding RoleOptions}"
+                                          SelectedValue="{Binding SelectedProfileRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          SelectedValuePath="Value"
+                                          DisplayMemberPath="Label" />
+                                <TextBlock Text="{Binding SelectedProfileRoleDescription}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Grid.Row="2" Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="180" />
                                 <ColumnDefinition Width="*" />
@@ -41,7 +58,7 @@
                             <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
 
-                        <Grid Grid.Row="2" Margin="0,12,0,0">
+                        <Grid Grid.Row="3" Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="180" />
                                 <ColumnDefinition Width="*" />
@@ -50,7 +67,7 @@
                             <TextBox Grid.Column="1" Text="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
 
-                        <Grid Grid.Row="3" Margin="0,12,0,0">
+                        <Grid Grid.Row="4" Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="180" />
                                 <ColumnDefinition Width="*" />
@@ -68,6 +85,7 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <StackPanel Margin="0,0,0,16">
                             <TextBlock Text="模型" FontSize="18" FontWeight="SemiBold" />
@@ -79,11 +97,13 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="协议" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <ComboBox Grid.Column="1"
-                                      ItemsSource="{Binding ProtocolOptions}"
-                                      SelectedValue="{Binding SelectedProtocol, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      SelectedValuePath="Value"
-                                      DisplayMemberPath="Label" />
+                            <StackPanel Grid.Column="1">
+                                <ComboBox ItemsSource="{Binding ProtocolOptions}"
+                                          SelectedValue="{Binding SelectedProtocol, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          SelectedValuePath="Value"
+                                          DisplayMemberPath="Label" />
+                                <TextBlock Text="{Binding SelectedProtocolDescription}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            </StackPanel>
                         </Grid>
 
                         <Grid Grid.Row="2" Margin="0,12,0,0">
@@ -100,8 +120,20 @@
                                 <ColumnDefinition Width="180" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="生图模型" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="图片模型" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding ImageModel, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+
+                        <Grid Grid.Row="4" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="视频模型" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1">
+                                <TextBox Text="{Binding VideoModel, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text="Routin xAI Video 默认推荐 grok-imagine-video。" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            </StackPanel>
                         </Grid>
                     </Grid>
                 </Border>

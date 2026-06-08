@@ -30,6 +30,10 @@ public sealed class GenerationOutputRecord
     public string? RevisedPrompt { get; init; }
     public string? ImageBase64 { get; init; }
     public string? SourceUrl { get; init; }
+    public string MediaType { get; init; } = "image";
+    public double? DurationSeconds { get; init; }
+    public string? ProviderRequestId { get; init; }
+    public string? MetadataJson { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
 }
 
@@ -47,7 +51,9 @@ public sealed class GenerationTaskHistoryRecord
     public int OutputCount { get; init; }
     public string? PreviewBase64 { get; init; }
     public string? PreviewFilePath { get; init; }
+    public string? PreviewMediaType { get; init; }
 }
+
 
 public sealed class GenerationTaskOutputRecord
 {
@@ -59,6 +65,10 @@ public sealed class GenerationTaskOutputRecord
     public string? RevisedPrompt { get; init; }
     public string? ImageBase64 { get; init; }
     public string? SourceUrl { get; init; }
+    public string MediaType { get; init; } = "image";
+    public double? DurationSeconds { get; init; }
+    public string? ProviderRequestId { get; init; }
+    public string? MetadataJson { get; init; }
     public string CreatedAt { get; init; } = "";
 }
 
@@ -124,11 +134,13 @@ public sealed class GenerationTaskRepository
             @"
             insert into generation_outputs (
                 task_id, output_index, output_role, file_path, mime_type,
-                width, height, sha256, revised_prompt, image_base64, source_url, created_at
+                width, height, sha256, revised_prompt, image_base64, source_url,
+                media_type, duration_seconds, provider_request_id, metadata_json, created_at
             )
             values (
                 @TaskId, @OutputIndex, @OutputRole, @FilePath, @MimeType,
-                @Width, @Height, @Sha256, @RevisedPrompt, @ImageBase64, @SourceUrl, @CreatedAt
+                @Width, @Height, @Sha256, @RevisedPrompt, @ImageBase64, @SourceUrl,
+                @MediaType, @DurationSeconds, @ProviderRequestId, @MetadataJson, @CreatedAt
             )
             ",
             new
@@ -144,6 +156,10 @@ public sealed class GenerationTaskRepository
                 output.RevisedPrompt,
                 output.ImageBase64,
                 output.SourceUrl,
+                output.MediaType,
+                output.DurationSeconds,
+                output.ProviderRequestId,
+                output.MetadataJson,
                 CreatedAt = output.CreatedAt.ToString("O")
             });
     }
@@ -177,7 +193,14 @@ public sealed class GenerationTaskRepository
                     where o3.task_id = t.id and o3.file_path is not null and o3.file_path <> ''
                     order by o3.output_index, o3.id
                     limit 1
-                ) as PreviewFilePath
+                ) as PreviewFilePath,
+                (
+                    select o4.media_type
+                    from generation_outputs o4
+                    where o4.task_id = t.id
+                    order by o4.output_index, o4.id
+                    limit 1
+                ) as PreviewMediaType
             from generation_tasks t
             left join generation_outputs o on o.task_id = t.id
             where t.deleted_at is null
@@ -203,6 +226,10 @@ public sealed class GenerationTaskRepository
                 revised_prompt as RevisedPrompt,
                 image_base64 as ImageBase64,
                 source_url as SourceUrl,
+                media_type as MediaType,
+                duration_seconds as DurationSeconds,
+                provider_request_id as ProviderRequestId,
+                metadata_json as MetadataJson,
                 created_at as CreatedAt
             from generation_outputs
             where task_id = @TaskId

@@ -45,6 +45,51 @@ public sealed class GenerationTaskRepositoryTests : IDisposable
         Assert.Equal("revised", connection.ExecuteScalar<string>("select revised_prompt from generation_outputs where task_id = 'task-1'"));
     }
 
+    [Fact]
+    public void AddOutput_persists_video_metadata_and_history_preview_media_type()
+    {
+        var database = new SqliteDatabase(AppPaths.CreateForRoot(_root));
+        new SqliteSchemaInitializer(database).Initialize();
+        var repository = new GenerationTaskRepository(database);
+
+        repository.CreateTask(new GenerationTaskRecord
+        {
+            Id = "video-task-1",
+            Mode = "video",
+            Prompt = "video prompt",
+            ParametersJson = "{\"Model\":\"grok-imagine-video\"}",
+            Status = "pending",
+            CreatedAt = DateTimeOffset.Parse("2026-06-06T00:00:00Z"),
+            UpdatedAt = DateTimeOffset.Parse("2026-06-06T00:00:00Z")
+        });
+        repository.AddOutput("video-task-1", new GenerationOutputRecord
+        {
+            OutputIndex = 0,
+            OutputRole = "final",
+            FilePath = @"C:\videos\video-task-1_0.mp4",
+            MimeType = "video/mp4",
+            Sha256 = "video-sha",
+            SourceUrl = "https://cdn.example.test/video.mp4",
+            MediaType = "video",
+            DurationSeconds = 6.5,
+            ProviderRequestId = "req_123",
+            MetadataJson = "{\"progress\":100}",
+            CreatedAt = DateTimeOffset.Parse("2026-06-06T00:01:00Z")
+        });
+        repository.MarkCompleted("video-task-1");
+
+        var output = Assert.Single(repository.ListOutputs("video-task-1"));
+        Assert.Equal("video", output.MediaType);
+        Assert.Equal("https://cdn.example.test/video.mp4", output.SourceUrl);
+        Assert.Equal(6.5, output.DurationSeconds);
+        Assert.Equal("req_123", output.ProviderRequestId);
+        Assert.Equal("{\"progress\":100}", output.MetadataJson);
+
+        var history = Assert.Single(repository.ListRecent());
+        Assert.Equal("video", history.PreviewMediaType);
+        Assert.Equal(1, history.OutputCount);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

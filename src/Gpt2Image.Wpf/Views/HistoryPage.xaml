@@ -1,14 +1,11 @@
 <UserControl x:Class="Gpt2Image.Wpf.Views.HistoryPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Gpt2Image.Wpf.Controls"
              xmlns:converters="clr-namespace:Gpt2Image.Wpf.Converters">
     <UserControl.Resources>
         <converters:Base64ImageSourceConverter x:Key="Base64ImageSourceConverter" />
-        <Style x:Key="HistoryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="MinHeight" Value="30" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="FontSize" Value="12" />
-        </Style>
+        <Style x:Key="HistoryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource SmallActionButtonStyle}" />
     </UserControl.Resources>
 
     <Grid>
@@ -23,7 +20,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="历史" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="历史" Style="{StaticResource PageTitleTextStyle}" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,5,0,0" />
             </StackPanel>
             <Button Grid.Column="1" Content="刷新" Command="{Binding RefreshCommand}" />
@@ -95,6 +92,7 @@
                                                 <MenuItem Header="打开文件" Command="{Binding OpenFileCommand}" />
                                                 <MenuItem Header="打开文件夹" Command="{Binding OpenFolderCommand}" />
                                                 <MenuItem Header="复制路径" Command="{Binding CopyPathCommand}" />
+                                                <MenuItem Header="复制链接" Command="{Binding CopySourceUrlCommand}" />
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <Grid>
@@ -103,7 +101,10 @@
                                                 <RowDefinition Height="*" />
                                             </Grid.RowDefinitions>
                                             <Grid Background="#EEF2F7">
-                                                <Image Source="{Binding PreviewImageSource, Converter={StaticResource Base64ImageSourceConverter}}" Stretch="Uniform" />
+                                                <Image x:Name="HistoryImage" Source="{Binding PreviewImageSource, Converter={StaticResource Base64ImageSourceConverter}}" Stretch="Uniform" />
+                                                <controls:VideoPlayerControl x:Name="HistoryVideoPanel"
+                                                                             Source="{Binding PlaybackSource}"
+                                                                             Visibility="Collapsed" />
                                             </Grid>
                                             <Border Grid.Row="1" Background="#FFFFFF" Padding="10">
                                                 <Grid>
@@ -121,8 +122,9 @@
                                                         <TextBlock Grid.Column="1" Text="{Binding FileName}" Foreground="{StaticResource TextSecondaryBrush}" MaxWidth="150" TextTrimming="CharacterEllipsis" />
                                                     </Grid>
                                                     <TextBlock Grid.Row="1" Text="{Binding Status}" Foreground="#475569" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="0,5,0,0" />
-                                                    <UniformGrid Grid.Row="2" Columns="4" Margin="0,10,0,0">
+                                                    <UniformGrid Grid.Row="2" Columns="5" Margin="0,10,0,0">
                                                         <Button Content="保存" Command="{Binding SaveAsCommand}" Style="{StaticResource HistoryActionButtonStyle}" Margin="0,0,6,0" />
+                                                        <Button Content="复制链接" Command="{Binding CopySourceUrlCommand}" Style="{StaticResource HistoryActionButtonStyle}" Margin="0,0,6,0" />
                                                         <Button Content="打开" Command="{Binding OpenFileCommand}" Style="{StaticResource HistoryActionButtonStyle}" Margin="0,0,6,0" />
                                                         <Button Content="文件夹" Command="{Binding OpenFolderCommand}" Style="{StaticResource HistoryActionButtonStyle}" Margin="0,0,6,0" />
                                                         <Button Content="复制路径" Command="{Binding CopyPathCommand}" Style="{StaticResource HistoryActionButtonStyle}" />
@@ -131,6 +133,12 @@
                                             </Border>
                                         </Grid>
                                     </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsVideo}" Value="True">
+                                            <Setter TargetName="HistoryImage" Property="Visibility" Value="Collapsed" />
+                                            <Setter TargetName="HistoryVideoPanel" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

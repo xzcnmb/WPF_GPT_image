@@ -73,6 +73,68 @@ public sealed class ChatRepositoryTests : IDisposable
         Assert.Null(repository.GetConversation("chat-1"));
     }
 
+    [Fact]
+    public void AddMessage_with_attachment_roundtrips_attachment_metadata()
+    {
+        var database = new SqliteDatabase(AppPaths.CreateForRoot(_root));
+        new SqliteSchemaInitializer(database).Initialize();
+        var repository = new ChatRepository(database);
+        var now = DateTimeOffset.Parse("2026-06-06T12:00:00Z");
+        repository.CreateConversation(new ChatConversation
+        {
+            Id = "chat-attachments",
+            Title = "附件会话",
+            Model = "gpt-4o-mini",
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        var messageId = repository.AddMessage(new ChatMessage
+        {
+            ConversationId = "chat-attachments",
+            Role = "user",
+            Content = "分析附件",
+            Attachments = new[]
+            {
+                new ChatAttachment
+                {
+                    ConversationId = "chat-attachments",
+                    FilePath = @"C:\chat\image.png",
+                    FileName = "image.png",
+                    MimeType = "image/png",
+                    Sha256 = "sha",
+                    ByteLength = 123,
+                    CreatedAt = now
+                }
+            },
+            CreatedAt = now
+        });
+
+        var message = Assert.Single(repository.ListMessages("chat-attachments"));
+        Assert.Equal(messageId, message.Id);
+        var attachment = Assert.Single(message.Attachments);
+        Assert.Equal(messageId, attachment.MessageId);
+        Assert.Equal("chat-attachments", attachment.ConversationId);
+        Assert.Equal("image.png", attachment.FileName);
+        Assert.Equal("image/png", attachment.MimeType);
+        Assert.Equal(123, attachment.ByteLength);
+    }
+
+    [Fact]
+    public void TouchConversation_moves_conversation_to_top_of_list()
+    {
+        var database = new SqliteDatabase(AppPaths.CreateForRoot(_root));
+        new SqliteSchemaInitializer(database).Initialize();
+        var repository = new ChatRepository(database);
+        var now = DateTimeOffset.Parse("2026-06-06T12:00:00Z");
+        repository.CreateConversation(new ChatConversation { Id = "old", Title = "旧", Model = "gpt-4o-mini", CreatedAt = now, UpdatedAt = now });
+        repository.CreateConversation(new ChatConversation { Id = "new", Title = "新", Model = "gpt-4o-mini", CreatedAt = now.AddMinutes(1), UpdatedAt = now.AddMinutes(1) });
+
+        repository.TouchConversation("old", now.AddMinutes(2));
+
+        Assert.Equal("old", repository.ListConversations().First().Id);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

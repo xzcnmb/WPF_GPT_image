@@ -472,6 +472,77 @@ public sealed class OpenAiCompatibleImageClientTests
     }
 
     [Fact]
+    public async Task ChatAsync_maps_system_and_dev_roles_to_developer_role()
+    {
+        var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"ok\"}}]}", Encoding.UTF8, "application/json")
+        });
+        var client = new OpenAiCompatibleImageClient(new HttpClient(handler));
+
+        await client.ChatAsync(TestProfile(), new ChatRequest
+        {
+            Model = "gpt-4o-mini",
+            Messages = new[]
+            {
+                new ChatMessage { Role = "system", Content = "你是助手" },
+                new ChatMessage { Role = "dev", Content = "回答要简短" },
+                new ChatMessage { Role = "user", Content = "你好" }
+            }
+        }, CancellationToken.None);
+
+        Assert.Contains("\"messages\":[{\"role\":\"developer\",\"content\":\"你是助手\"},{\"role\":\"developer\",\"content\":\"回答要简短\"},{\"role\":\"user\",\"content\":\"你好\"}]", handler.RequestBody!);
+        Assert.DoesNotContain("\"role\":\"system\"", handler.RequestBody!);
+        Assert.DoesNotContain("\"role\":\"dev\"", handler.RequestBody!);
+    }
+
+    [Fact]
+    public async Task ChatAsync_with_image_and_text_attachments_posts_multimodal_content_array()
+    {
+        var imagePath = CreateTempImageFile("chat.png", new byte[] { 1, 2, 3 });
+        var textPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}_notes.md");
+        File.WriteAllText(textPath, "# Notes\nhello");
+        try
+        {
+            var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"看到了\"}}]}", Encoding.UTF8, "application/json")
+            });
+            var client = new OpenAiCompatibleImageClient(new HttpClient(handler));
+
+            var result = await client.ChatAsync(TestProfile(), new ChatRequest
+            {
+                Model = "gpt-4o-mini",
+                Messages = new[]
+                {
+                    new ChatMessage
+                    {
+                        Role = "user",
+                        Content = "请分析附件",
+                        Attachments = new[]
+                        {
+                            new ChatAttachment { FilePath = imagePath, FileName = "chat.png", MimeType = "image/png" },
+                            new ChatAttachment { FilePath = textPath, FileName = "notes.md", MimeType = "text/markdown" }
+                        }
+                    }
+                }
+            }, CancellationToken.None);
+
+            Assert.Equal("看到了", result.Content);
+            Assert.Contains("\"content\":[", handler.RequestBody!);
+            Assert.Contains("\"type\":\"text\"", handler.RequestBody!);
+            Assert.Contains("\"type\":\"image_url\"", handler.RequestBody!);
+            Assert.Contains("data:image/png;base64,AQID", handler.RequestBody!);
+            Assert.Contains("附件文件：notes.md", handler.RequestBody!);
+        }
+        finally
+        {
+            File.Delete(imagePath);
+            File.Delete(textPath);
+        }
+    }
+
+    [Fact]
     public async Task StreamResponsesAsync_emits_partial_and_final_image_events()
     {
         var stream = string.Join("\n", new[]

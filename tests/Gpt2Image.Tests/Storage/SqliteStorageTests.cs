@@ -61,6 +61,47 @@ public sealed class SqliteStorageTests : IDisposable
     }
 
     [Fact]
+    public void Initialize_marks_existing_openai_responses_profiles_as_agent_capable()
+    {
+        var paths = CreatePaths();
+        var database = new SqliteDatabase(paths);
+        using (var connection = database.OpenConnection())
+        {
+            connection.Execute(
+                @"
+                create table backend_profiles (
+                    id text primary key,
+                    name text not null,
+                    base_url text not null,
+                    protocol text not null default 'openai-images',
+                    api_key_ciphertext text not null,
+                    mainline_model text not null,
+                    image_model text not null,
+                    video_model text not null default '',
+                    concurrency integer not null default 1,
+                    priority integer not null default 0,
+                    is_enabled integer not null default 1,
+                    failure_cooldown_until text null,
+                    created_at text not null,
+                    updated_at text not null
+                );
+                insert into backend_profiles (
+                    id, name, base_url, protocol, api_key_ciphertext, mainline_model, image_model, video_model,
+                    concurrency, priority, is_enabled, created_at, updated_at
+                ) values (
+                    'responses-profile', 'Responses', 'https://example.test/v1', 'openai-responses', 'sk-test', 'gpt-4o-mini', 'gpt-image-2', '',
+                    1, 0, 1, '2026-06-06T00:00:00Z', '2026-06-06T00:00:00Z'
+                );
+                ");
+        }
+
+        new SqliteSchemaInitializer(database).Initialize();
+
+        using var verify = database.OpenConnection();
+        Assert.Equal(1, verify.ExecuteScalar<int>("select supports_agent from backend_profiles where id = 'responses-profile'"));
+    }
+
+    [Fact]
     public void Backend_profile_repository_encrypts_api_key_at_rest_and_roundtrips_plaintext()
     {
         var paths = CreatePaths();

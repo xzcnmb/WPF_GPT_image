@@ -42,6 +42,7 @@ public partial class App
                 services.AddSingleton<ChatRepository>();
                 services.AddSingleton<InputAssetRepository>();
                 services.AddSingleton<LocalImageStorage>();
+                services.AddSingleton<LocalMediaStorage>();
                 services.AddSingleton<IGenerationQueue>(_ => new GenerationQueue(new GenerationQueueOptions(GlobalConcurrency: 2)));
                 services.AddHttpClient<IImageGenerationClient, OpenAiCompatibleImageClient>()
                     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
@@ -49,8 +50,15 @@ public partial class App
                         AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
                         PooledConnectionLifetime = TimeSpan.FromMinutes(10)
                     });
+                services.AddHttpClient<IVideoGenerationClient, RoutinXaiVideoClient>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                    {
+                        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+                        PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+                    });
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddTransient<CreatePageViewModel>();
+                services.AddTransient<VideoGenerationPageViewModel>();
                 services.AddTransient<AgentPageViewModel>();
                 services.AddTransient<ChatPageViewModel>();
                 services.AddTransient<HistoryPageViewModel>();
