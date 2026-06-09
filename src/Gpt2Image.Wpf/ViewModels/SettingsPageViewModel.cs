@@ -65,23 +65,33 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         .Select(value => new ProfileRoleOptionViewModel(value, BackendProfileRole.DisplayName(value), DescriptionForRole(value)))
         .ToList();
 
-    public IReadOnlyList<ProtocolOptionViewModel> ProtocolOptions { get; } = BackendProtocol.KnownValues
-        .Select(value => new ProtocolOptionViewModel(value, BackendProtocol.DisplayName(value), BackendProtocol.Description(value)))
-        .ToList();
+    public ObservableCollection<ProtocolOptionViewModel> ProtocolOptions { get; } = new();
 
-    public IReadOnlyList<ProviderPresetOptionViewModel> ProviderOptions { get; } = BackendProviderPresetCatalog.TextCompatiblePresets
-        .Select(item => new ProviderPresetOptionViewModel(item.Kind, item.Label, item.Description))
-        .Concat(new[]
-        {
-            new ProviderPresetOptionViewModel(BackendProviderKind.Routin, "Routin xAI Video", "Routin 视频生成接口预设。")
-        })
-        .ToList();
+    public ObservableCollection<ProviderPresetOptionViewModel> ProviderOptions { get; } = new();
 
     public string SelectedProfileRoleDescription => RoleOptions.FirstOrDefault(item => item.Value == BackendProfileRole.Normalize(SelectedProfileRole))?.Description ?? "";
 
     public string SelectedProtocolDescription => BackendProtocol.Description(SelectedProtocol);
 
     public string SelectedProviderDescription => ProviderOptions.FirstOrDefault(item => item.Value == BackendProviderKind.Normalize(SelectedProviderKind))?.Description ?? "";
+
+    public string ProviderSectionTitle => BackendProfileRole.Normalize(SelectedProfileRole) switch
+    {
+        BackendProfileRole.Image => "图像生成供应商（仅显示图片能力）",
+        BackendProfileRole.Video => "视频生成供应商（仅显示视频能力）",
+        BackendProfileRole.Agent => "Agent 供应商（Responses 能力）",
+        BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding => "对话 / 编码供应商（仅显示文本能力）",
+        _ => "模型接口供应商"
+    };
+
+    public string ProviderSectionHint => BackendProfileRole.Normalize(SelectedProfileRole) switch
+    {
+        BackendProfileRole.Image => "DeepSeek、Kimi、Qwen、GLM 等普通聊天模型不会出现在图像生成里；这里只显示 OpenAI Images/Responses 或自定义图片兼容接口。",
+        BackendProfileRole.Video => "DeepSeek、MiniMax、Kimi、Qwen、GLM 等普通聊天模型不会出现在视频生成里；这里只显示 Routin xAI Video 等视频接口。",
+        BackendProfileRole.Agent => "这里只显示支持 /v1/responses 的 Agent/工具调用接口。",
+        BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding => "这里只显示 OpenAI-compatible 文本/代码模型：DeepSeek、MiniMax、Mino、Kimi、Qwen、GLM 等。",
+        _ => "按当前功能过滤可用供应商，避免把聊天模型误用于图片或视频生成。"
+    };
 
     [RelayCommand]
     private void Save()
@@ -96,7 +106,12 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         SelectedProfileRole = role;
         SelectedProviderKind = BackendProviderKind.Normalize(SelectedProviderKind);
         SelectedProtocol = BackendProtocol.Normalize(SelectedProtocol);
-        var compatibilityError = ValidateRoleProtocol(role, SelectedProtocol);
+        var compatibilityError = ValidateRoleProvider(role, SelectedProviderKind);
+        if (string.IsNullOrWhiteSpace(compatibilityError))
+        {
+            compatibilityError = ValidateRoleProtocol(role, SelectedProtocol);
+        }
+
         if (!string.IsNullOrWhiteSpace(compatibilityError))
         {
             Status = compatibilityError;
@@ -160,6 +175,7 @@ public sealed partial class SettingsPageViewModel : ObservableObject
     private void LoadProfileForRole(string role)
     {
         role = BackendProfileRole.Normalize(role);
+        RefreshOptionsForRole(role);
         RefreshProfilesForRole(role);
         var profile = _profiles.GetById(BackendProfileRole.DefaultProfileId(role))
                       ?? LoadLegacyProfile(role)
@@ -171,16 +187,18 @@ public sealed partial class SettingsPageViewModel : ObservableObject
             return;
         }
 
-        LoadProfile(profile);
+        LoadProfile(profile, role);
     }
 
-    private void LoadProfile(BackendProfile profile)
+    private void LoadProfile(BackendProfile profile, string? roleOverride = null)
     {
         try
         {
             _isLoadingProfile = true;
             _editingProfileId = profile.Id;
-            SelectedProfileRole = GuessPrimaryRole(profile);
+            var role = string.IsNullOrWhiteSpace(roleOverride) ? GuessPrimaryRole(profile) : BackendProfileRole.Normalize(roleOverride);
+            SelectedProfileRole = role;
+            RefreshOptionsForRole(role);
             SelectedProfile = Profiles.FirstOrDefault(item => item.Id == profile.Id);
             SelectedProviderKind = BackendProviderKind.Normalize(profile.ProviderKind);
             Name = profile.Name;
@@ -209,8 +227,80 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         };
     }
 
+    private void RefreshOptionsForRole(string role)
+    {
+        var normalizedRole = BackendProfileRole.Normalize(role);
+        var wasLoading = _isLoadingProfile;
+        try
+        {
+            _isLoadingProfile = true;
+            ProtocolOptions.Clear();
+            foreach (var protocol in ProtocolsForRole(normalizedRole))
+            {
+                ProtocolOptions.Add(new ProtocolOptionViewModel(protocol, BackendProtocol.DisplayName(protocol), BackendProtocol.Description(protocol)));
+            }
+
+            ProviderOptions.Clear();
+            foreach (var provider in ProvidersForRole(normalizedRole))
+            {
+                ProviderOptions.Add(provider);
+            }
+
+            if (!ProviderOptions.Any(item => item.Value == BackendProviderKind.Normalize(SelectedProviderKind)))
+            {
+                SelectedProviderKind = ProviderOptions.FirstOrDefault()?.Value ?? BackendProviderKind.Custom;
+            }
+
+            if (!ProtocolOptions.Any(item => item.Value == BackendProtocol.Normalize(SelectedProtocol)))
+            {
+                SelectedProtocol = ProtocolOptions.FirstOrDefault()?.Value ?? BackendProtocol.OpenAiImages;
+            }
+        }
+        finally
+        {
+            _isLoadingProfile = wasLoading;
+        }
+
+        RaiseSelectionDescriptions();
+    }
+
+    private static IReadOnlyList<string> ProtocolsForRole(string role) => BackendProfileRole.Normalize(role) switch
+    {
+        BackendProfileRole.Video => new[] { BackendProtocol.RoutinXaiVideo },
+        BackendProfileRole.Agent => new[] { BackendProtocol.OpenAiResponses },
+        BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding => new[] { BackendProtocol.ChatCompletionsImageJson },
+        _ => new[] { BackendProtocol.OpenAiImages, BackendProtocol.OpenAiResponses, BackendProtocol.ChatCompletionsImageJson }
+    };
+
+    private static IReadOnlyList<ProviderPresetOptionViewModel> ProvidersForRole(string role)
+    {
+        return BackendProfileRole.Normalize(role) switch
+        {
+            BackendProfileRole.Video => new[]
+            {
+                new ProviderPresetOptionViewModel(BackendProviderKind.Routin, "Routin xAI Video", "视频生成专用接口；DeepSeek/Kimi/Qwen/GLM 这类普通聊天模型不会用于视频生成。")
+            },
+            BackendProfileRole.Image => new[]
+            {
+                new ProviderPresetOptionViewModel(BackendProviderKind.OpenAi, "OpenAI 图像", "图像生成/编辑能力：OpenAI Images 或 Responses image_generation。"),
+                new ProviderPresetOptionViewModel(BackendProviderKind.Custom, "自定义图片兼容接口", "仅用于明确支持图片生成/编辑的 OpenAI-compatible 图片接口；不要填写纯聊天模型。")
+            },
+            BackendProfileRole.Agent => new[]
+            {
+                new ProviderPresetOptionViewModel(BackendProviderKind.OpenAi, "OpenAI Responses", "支持 /v1/responses 和 image_generation 工具的接口。"),
+                new ProviderPresetOptionViewModel(BackendProviderKind.Custom, "自定义 Responses 接口", "仅用于明确支持 /v1/responses 的兼容接口。")
+            },
+            BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding => BackendProviderPresetCatalog.TextCompatiblePresets
+                .Select(item => new ProviderPresetOptionViewModel(item.Kind, item.Label, item.Description))
+                .ToList(),
+            _ => new[] { new ProviderPresetOptionViewModel(BackendProviderKind.Custom, "自定义", "自定义兼容接口。") }
+        };
+    }
+
     private void LoadDefaultsForRole(string role, bool resetApiKey)
     {
+        role = BackendProfileRole.Normalize(role);
+        RefreshOptionsForRole(role);
         try
         {
             _isLoadingProfile = true;
@@ -284,13 +374,17 @@ public sealed partial class SettingsPageViewModel : ObservableObject
 
     private void ApplySelectedProviderPreset(bool clearApiKeyWhenSwitchingProvider)
     {
-        var provider = BackendProviderKind.Normalize(SelectedProviderKind);
-        if (provider == BackendProviderKind.Routin)
+        var role = BackendProfileRole.Normalize(SelectedProfileRole);
+        var provider = EnsureProviderAllowedForRole(role, BackendProviderKind.Normalize(SelectedProviderKind));
+        SelectedProviderKind = provider;
+
+        if (role == BackendProfileRole.Video)
         {
-            SelectedProfileRole = BackendProfileRole.Video;
             Name = "Routin xAI Video";
             BaseUrl = DefaultRoutinBaseUrl;
             SelectedProtocol = BackendProtocol.RoutinXaiVideo;
+            MainlineModel = DefaultMainlineModel;
+            ImageModel = "gpt-image-2";
             VideoModel = DefaultRoutinVideoModel;
             if (clearApiKeyWhenSwitchingProvider)
             {
@@ -299,27 +393,63 @@ public sealed partial class SettingsPageViewModel : ObservableObject
             return;
         }
 
-        var preset = BackendProviderPresetCatalog.GetTextPreset(provider);
-        if (provider != BackendProviderKind.Custom)
+        if (role == BackendProfileRole.Image)
         {
-            Name = $"{preset.Label} · {BackendProfileRole.DisplayName(SelectedProfileRole)}";
+            Name = provider == BackendProviderKind.OpenAi ? "OpenAI · 图像创作 API" : "自定义图片兼容接口";
+            BaseUrl = provider == BackendProviderKind.OpenAi ? "https://api.openai.com/v1" : "https://api.example.com/v1";
+            SelectedProtocol = provider == BackendProviderKind.OpenAi ? BackendProtocol.OpenAiImages : BackendProtocol.OpenAiImages;
+            MainlineModel = DefaultMainlineModel;
+            ImageModel = string.IsNullOrWhiteSpace(ImageModel) ? "gpt-image-2" : ImageModel;
+            VideoModel = DefaultRoutinVideoModel;
+            if (clearApiKeyWhenSwitchingProvider)
+            {
+                ApiKey = "";
+            }
+            return;
         }
 
+        if (role == BackendProfileRole.Agent)
+        {
+            Name = provider == BackendProviderKind.OpenAi ? "OpenAI · Agent / Responses API" : "自定义 Responses 接口";
+            BaseUrl = provider == BackendProviderKind.OpenAi ? "https://api.openai.com/v1" : "https://api.example.com/v1";
+            SelectedProtocol = BackendProtocol.OpenAiResponses;
+            MainlineModel = provider == BackendProviderKind.OpenAi ? DefaultMainlineModel : MainlineModel;
+            if (clearApiKeyWhenSwitchingProvider)
+            {
+                ApiKey = "";
+            }
+            return;
+        }
+
+        var preset = BackendProviderPresetCatalog.GetTextPreset(provider);
+        Name = provider == BackendProviderKind.Custom
+            ? $"自定义 · {BackendProfileRole.DisplayName(role)}"
+            : $"{preset.Label} · {BackendProfileRole.DisplayName(role)}";
         BaseUrl = preset.BaseUrl;
-        SelectedProtocol = BackendProfileRole.Normalize(SelectedProfileRole) == BackendProfileRole.Agent
-            ? BackendProtocol.OpenAiResponses
-            : BackendProfileRole.Normalize(SelectedProfileRole) == BackendProfileRole.Image && provider == BackendProviderKind.OpenAi
-                ? BackendProtocol.OpenAiImages
-                : BackendProtocol.ChatCompletionsImageJson;
+        SelectedProtocol = BackendProtocol.ChatCompletionsImageJson;
         if (!string.IsNullOrWhiteSpace(preset.MainlineModel))
         {
             MainlineModel = preset.MainlineModel;
         }
 
+        ImageModel = "";
+        VideoModel = "";
         if (clearApiKeyWhenSwitchingProvider)
         {
             ApiKey = "";
         }
+    }
+
+    private string EnsureProviderAllowedForRole(string role, string provider)
+    {
+        var normalized = BackendProviderKind.Normalize(provider);
+        if (ProviderOptions.Any(item => item.Value == normalized))
+        {
+            return normalized;
+        }
+
+        RefreshOptionsForRole(role);
+        return ProviderOptions.FirstOrDefault()?.Value ?? BackendProviderKind.Custom;
     }
 
     private void RefreshProfilesForCurrentRole(string? preferredId = null)
@@ -337,6 +467,20 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         {
             Profiles.Add(BackendProfileItemViewModel.FromProfile(profile));
         }
+    }
+
+    private static string ValidateRoleProvider(string role, string providerKind)
+    {
+        var normalizedRole = BackendProfileRole.Normalize(role);
+        var normalizedProvider = BackendProviderKind.Normalize(providerKind);
+        return normalizedRole switch
+        {
+            BackendProfileRole.Video when normalizedProvider != BackendProviderKind.Routin => "视频生成只能选择视频供应商，不能使用 DeepSeek/Kimi/Qwen/GLM 等纯文本模型。",
+            BackendProfileRole.Image when normalizedProvider is BackendProviderKind.DeepSeek or BackendProviderKind.MiniMax or BackendProviderKind.Mino or BackendProviderKind.Kimi or BackendProviderKind.Qwen or BackendProviderKind.Glm => "图像创作不能选择纯文本/编码模型；请选择 OpenAI 图像或自定义图片兼容接口。",
+            BackendProfileRole.Agent when normalizedProvider is BackendProviderKind.DeepSeek or BackendProviderKind.MiniMax or BackendProviderKind.Mino or BackendProviderKind.Kimi or BackendProviderKind.Qwen or BackendProviderKind.Glm or BackendProviderKind.Routin => "Agent/Responses 只能选择支持 /v1/responses 的供应商。",
+            BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding when normalizedProvider == BackendProviderKind.Routin => "对话/编码不能选择视频生成供应商。",
+            _ => ""
+        };
     }
 
     private static string ValidateRoleProtocol(string role, string protocol)
@@ -423,6 +567,8 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedProfileRoleDescription));
         OnPropertyChanged(nameof(SelectedProtocolDescription));
         OnPropertyChanged(nameof(SelectedProviderDescription));
+        OnPropertyChanged(nameof(ProviderSectionTitle));
+        OnPropertyChanged(nameof(ProviderSectionHint));
     }
 
     partial void OnSelectedProfileChanged(BackendProfileItemViewModel? value)
@@ -435,7 +581,7 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         var profile = _profiles.GetById(value.Id);
         if (profile is not null)
         {
-            LoadProfile(profile);
+            LoadProfile(profile, SelectedProfileRole);
         }
     }
 
