@@ -59,6 +59,33 @@ public sealed class ChatPageViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task SendAsync_when_selected_profile_differs_from_existing_conversation_uses_selected_profile()
+    {
+        var fixture = CreateFixture("DeepSeek 回复", includeDeepSeek: true);
+        var now = DateTimeOffset.Parse("2026-06-06T12:00:00Z");
+        fixture.Chats.CreateConversation(new ChatConversation
+        {
+            Id = "openai-chat",
+            Title = "OpenAI 旧会话",
+            BackendProfileId = "chat-default",
+            Model = "gpt-4o-mini",
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        fixture.ViewModel.RefreshConversations();
+        fixture.ViewModel.SelectedConversation = fixture.ViewModel.Conversations.Single(item => item.Id == "openai-chat");
+        fixture.ViewModel.SelectedChatProfile = fixture.ViewModel.AvailableChatProfiles.Single(item => item.Id == "chat-deepseek");
+        fixture.ViewModel.Input = "这次应该走 deepseek";
+
+        await fixture.ViewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal("chat-deepseek", fixture.Client.LastProfile?.Id);
+        Assert.Equal("deepseek-chat", fixture.Client.LastRequest?.Model);
+        Assert.Equal(2, fixture.Chats.ListConversations().Count);
+        Assert.Contains(fixture.Chats.ListConversations(), conversation => conversation.BackendProfileId == "chat-deepseek" && conversation.Model == "deepseek-chat");
+    }
+
+    [Fact]
     public async Task SendAsync_when_client_returns_error_persists_visible_error_message()
     {
         var fixture = CreateFixture(error: "模型不可用");
@@ -110,7 +137,7 @@ public sealed class ChatPageViewModelTests : IDisposable
         }
     }
 
-    private Fixture CreateFixture(string content = "助手回复", string? error = null)
+    private Fixture CreateFixture(string content = "助手回复", string? error = null, bool includeDeepSeek = false)
     {
         var paths = AppPaths.CreateForRoot(_root);
         var database = new SqliteDatabase(paths);
@@ -123,6 +150,7 @@ public sealed class ChatPageViewModelTests : IDisposable
             BaseUrl = "https://example.test/v1",
             ApiKey = "sk-test",
             Protocol = BackendProtocol.ChatCompletionsImageJson,
+            ProviderKind = BackendProviderKind.OpenAi,
             MainlineModel = "gpt-4o-mini",
             ImageModel = "gpt-image-2",
             Concurrency = 1,
@@ -134,6 +162,29 @@ public sealed class ChatPageViewModelTests : IDisposable
             SupportsVideoGeneration = false,
             SupportsAgent = false
         });
+        if (includeDeepSeek)
+        {
+            profiles.Upsert(new BackendProfile
+            {
+                Id = "chat-deepseek",
+                Name = "DeepSeek 聊天 API",
+                BaseUrl = "https://api.deepseek.com/v1",
+                ApiKey = "sk-test-deepseek",
+                Protocol = BackendProtocol.ChatCompletionsImageJson,
+                ProviderKind = BackendProviderKind.DeepSeek,
+                MainlineModel = "deepseek-chat",
+                ImageModel = "",
+                Concurrency = 1,
+                Priority = 10,
+                IsEnabled = true,
+                SupportsPromptOptimization = false,
+                SupportsChat = true,
+                SupportsImageGeneration = false,
+                SupportsVideoGeneration = false,
+                SupportsAgent = false
+            });
+        }
+
         var chats = new ChatRepository(database);
         var client = new StubChatClient(content, error);
         var viewModel = new ChatPageViewModel(
@@ -168,12 +219,14 @@ public sealed class ChatPageViewModelTests : IDisposable
         }
 
         public ChatRequest? LastRequest { get; private set; }
+        public BackendProfile? LastProfile { get; private set; }
 
         public Task<GenerationResult> GenerateAsync(BackendProfile profile, ImageGenerationRequest request, CancellationToken cancellationToken)
             => Task.FromResult(new GenerationResult());
 
         public Task<ChatResult> ChatAsync(BackendProfile profile, ChatRequest request, CancellationToken cancellationToken)
         {
+            LastProfile = profile;
             LastRequest = request;
             return Task.FromResult(string.IsNullOrWhiteSpace(_error)
                 ? new ChatResult { Content = _content, RawJson = "{\"ok\":true}" }
