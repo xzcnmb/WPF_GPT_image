@@ -34,7 +34,7 @@
                     <Border Style="{StaticResource SectionCardStyle}" Margin="0,0,0,14">
                         <StackPanel>
                             <TextBlock Text="配置用途" Style="{StaticResource SectionTitleTextStyle}" />
-                            <TextBlock Text="先选择日常对话或 AI 编码，再在模型接口供应商中选择 DeepSeek、MiniMax、Mino、Kimi、Qwen、GLM 等预设。" Style="{StaticResource SectionSubtitleTextStyle}" Margin="0,4,0,14" />
+                            <TextBlock Text="先选择要配置的功能，下面的供应商和协议会按该功能能力自动过滤。" Style="{StaticResource SectionSubtitleTextStyle}" Margin="0,4,0,14" />
                             <ComboBox ItemsSource="{Binding RoleOptions}"
                                       SelectedValue="{Binding SelectedProfileRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       SelectedValuePath="Value"
@@ -42,12 +42,12 @@
                             <Border Style="{StaticResource MutedSectionCardStyle}" Margin="0,12,0,0">
                                 <TextBlock Text="{Binding SelectedProfileRoleDescription}" Style="{StaticResource MutedTextStyle}" FontSize="12" />
                             </Border>
-                            <TextBlock Text="模型接口供应商" FontWeight="SemiBold" Margin="0,16,0,8" />
+                            <TextBlock Text="{Binding ProviderSectionTitle}" FontWeight="SemiBold" Margin="0,16,0,8" />
                             <ComboBox ItemsSource="{Binding ProviderOptions}"
                                       SelectedValue="{Binding SelectedProviderKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       SelectedValuePath="Value"
                                       DisplayMemberPath="Label"
-                                      materialDesign:HintAssist.Hint="DeepSeek / MiniMax / Kimi / Qwen / GLM" />
+                                      materialDesign:HintAssist.Hint="按功能过滤后的供应商" />
                             <Border Style="{StaticResource MutedSectionCardStyle}" Margin="0,10,0,0">
                                 <TextBlock Text="{Binding SelectedProviderDescription}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap" />
                             </Border>
@@ -158,7 +158,7 @@
 
                             <StackPanel Margin="0,0,0,16">
                                 <TextBlock Text="供应商、模型与协议" Style="{StaticResource SectionTitleTextStyle}" />
-                                <TextBlock Text="这里就是多种 AI 供应商的模型接口入口：选择 DeepSeek、MiniMax、Mino、Kimi、Qwen、GLM 或自定义后，会自动填入对应 Base URL、接口协议和推荐模型。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                                <TextBlock Text="{Binding ProviderSectionHint}" Style="{StaticResource SectionSubtitleTextStyle}" />
                             </StackPanel>
 
                             <Border Grid.Row="1" Style="{StaticResource MutedSectionCardStyle}" Margin="0,0,0,10">
@@ -168,8 +168,8 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="模型接口供应商" FontWeight="SemiBold" />
-                                        <TextBlock Text="DeepSeek、MiniMax、Mino、Kimi、Qwen、GLM 等。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                                        <TextBlock Text="{Binding ProviderSectionTitle}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding ProviderSectionHint}" Style="{StaticResource SectionSubtitleTextStyle}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
                                         <ComboBox ItemsSource="{Binding ProviderOptions}"
@@ -190,7 +190,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="接口协议" FontWeight="SemiBold" />
-                                        <TextBlock Text="DeepSeek/Kimi/Qwen/GLM 等使用 OpenAI-compatible Chat Completions。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                                        <TextBlock Text="协议列表会按当前功能过滤，避免把纯聊天接口用于图片或视频。" Style="{StaticResource SectionSubtitleTextStyle}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
                                         <ComboBox ItemsSource="{Binding ProtocolOptions}"
