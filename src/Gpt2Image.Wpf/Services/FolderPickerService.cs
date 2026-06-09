@@ -9,7 +9,7 @@ public sealed class FolderPickerService : IFolderPickerService
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "选择 AI 自动编码工作区",
+            Description = "选择编码工作区",
             UseDescriptionForTitle = true,
             SelectedPath = Directory.Exists(initialDirectory) ? initialDirectory : ""
         };

@@ -55,7 +55,7 @@ public static class BackendProfileRole
         Chat => "聊天 API",
         Video => "视频生成 API",
         Agent => "Agent / Responses API",
-        Coding => "AI 自动编码",
+        Coding => "编码工作台",
         _ => "图片生成 API"
     };
 

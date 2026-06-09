@@ -18,15 +18,15 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="AI 编码助手" Style="{StaticResource PageTitleTextStyle}" />
-                <TextBlock Text="参考 OpenCowork 的本地 AI 协作方式：支持 DeepSeek、Kimi、Qwen、GLM 等编码模型，项目上下文、计划任务、工具审批和验证输出在一个工作台内完成。"
+                <TextBlock Text="编码工作台" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="在一个页面完成项目上下文、计划、变更审批和验证输出；模型只提出建议，执行前由你确认。"
                            Style="{StaticResource PageSubtitleTextStyle}" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,6,24,0" />
             </StackPanel>
             <Border Grid.Column="1" Style="{StaticResource StatusPillStyle}" VerticalAlignment="Top" Margin="18,4,0,0">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="ShieldLockOutline" Width="16" Height="16" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" />
-                    <TextBlock Text="Human-in-the-loop 审批" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12" />
+                    <TextBlock Text="手动审批" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12" />
                 </StackPanel>
             </Border>
         </Grid>
@@ -69,7 +69,7 @@
 
                         <StackPanel Margin="0,0,0,10">
                             <TextBlock Text="项目 / 会话" Style="{StaticResource SectionTitleTextStyle}" />
-                            <TextBlock Text="像 OpenCowork 一样，把项目上下文、检索和历史会话放在编码工作台左侧。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                            <TextBlock Text="项目上下文、检索和历史会话集中在左侧，方便切换和复用。" Style="{StaticResource SectionSubtitleTextStyle}" />
                         </StackPanel>
 
                         <TabControl Grid.Row="1">
@@ -213,7 +213,7 @@
 
                     <StackPanel Margin="0,0,0,12">
                         <TextBlock Text="目标、模式与计划" Style="{StaticResource SectionTitleTextStyle}" />
-                        <TextBlock Text="选择 Chat / Clarify / Cowork / Code / ACP 模式，AI 按对应方式生成计划、变更和验证建议。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                        <TextBlock Text="选择会话模式，按问答、澄清、协作、编码或流程化方式组织计划与建议。" Style="{StaticResource SectionSubtitleTextStyle}" />
                     </StackPanel>
 
                     <Border Grid.Row="1" Style="{StaticResource MutedSectionCardStyle}" Margin="0,0,0,12">

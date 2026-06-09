@@ -310,7 +310,7 @@ public sealed partial class SettingsPageViewModel : ObservableObject
             switch (role)
             {
                 case BackendProfileRole.Video:
-                    Name = "AI 视频创作 API";
+                    Name = "视频创作 API";
                     BaseUrl = DefaultRoutinBaseUrl;
                     SelectedProtocol = BackendProtocol.RoutinXaiVideo;
                     MainlineModel = DefaultMainlineModel;
@@ -337,7 +337,7 @@ public sealed partial class SettingsPageViewModel : ObservableObject
                     Concurrency = 1;
                     break;
                 case BackendProfileRole.Chat:
-                    Name = "AI 对话 API";
+                    Name = "对话 API";
                     BaseUrl = "https://api.openai.com/v1";
                     SelectedProtocol = BackendProtocol.ChatCompletionsImageJson;
                     MainlineModel = DefaultMainlineModel;
@@ -346,7 +346,7 @@ public sealed partial class SettingsPageViewModel : ObservableObject
                     Concurrency = 1;
                     break;
                 case BackendProfileRole.Coding:
-                    Name = "AI 编码 API";
+                    Name = "编码 API";
                     BaseUrl = "https://api.openai.com/v1";
                     SelectedProtocol = BackendProtocol.ChatCompletionsImageJson;
                     MainlineModel = DefaultMainlineModel;
@@ -642,10 +642,10 @@ public sealed partial class SettingsPageViewModel : ObservableObject
     private static string DescriptionForRole(string role) => BackendProfileRole.Normalize(role) switch
     {
         BackendProfileRole.Prompt => "用于提示词润色；可选择 OpenAI、DeepSeek、MiniMax、Kimi、Qwen、GLM 等聊天兼容模型。",
-        BackendProfileRole.Chat => "用于日常 AI 对话；支持为每个会话选择不同供应商配置。",
+        BackendProfileRole.Chat => "用于日常对话；支持为每个会话选择不同供应商配置。",
         BackendProfileRole.Video => "只用于视频生成；不会影响图像创作和提示词润色。",
         BackendProfileRole.Agent => "用于 Agent/Responses 流式生图工作流。",
-        BackendProfileRole.Coding => "用于 AI 编码；支持 DeepSeek、Kimi、Qwen、GLM 等聊天兼容模型生成计划、文件变更提案和验证命令。",
+        BackendProfileRole.Coding => "用于编码工作台；支持 DeepSeek、Kimi、Qwen、GLM 等聊天兼容模型生成计划、文件变更提案和验证命令。",
         _ => "只用于图像创作；不会被视频生成和对话配置抢占。"
     };
 }
