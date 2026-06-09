@@ -322,21 +322,21 @@ public sealed partial class ChatPageViewModel : ObservableObject
 
     private BackendProfile? ResolveProfileForSend()
     {
-        if (!string.IsNullOrWhiteSpace(SelectedConversation?.BackendProfileId))
-        {
-            var existingProfile = _profiles.GetById(SelectedConversation.BackendProfileId);
-            if (existingProfile is not null && IsChatUsableProfile(existingProfile))
-            {
-                return existingProfile;
-            }
-        }
-
         if (!string.IsNullOrWhiteSpace(SelectedChatProfile?.Id))
         {
             var selectedProfile = _profiles.GetById(SelectedChatProfile.Id);
             if (selectedProfile is not null && IsChatUsableProfile(selectedProfile))
             {
                 return selectedProfile;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(SelectedConversation?.BackendProfileId))
+        {
+            var existingProfile = _profiles.GetById(SelectedConversation.BackendProfileId);
+            if (existingProfile is not null && IsChatUsableProfile(existingProfile))
+            {
+                return existingProfile;
             }
         }
 
@@ -422,9 +422,16 @@ public sealed partial class ChatPageViewModel : ObservableObject
 
     private ChatConversationItemViewModel EnsureConversation(BackendProfile profile, string firstMessage)
     {
-        if (SelectedConversation is not null)
+        if (SelectedConversation is not null
+            && string.Equals(SelectedConversation.BackendProfileId, profile.Id, StringComparison.OrdinalIgnoreCase))
         {
             return SelectedConversation;
+        }
+
+        if (SelectedConversation is not null)
+        {
+            Messages.Clear();
+            Status = $"已切换到 {profile.Name}，自动创建新会话。";
         }
 
         var now = DateTimeOffset.UtcNow;
