@@ -145,7 +145,7 @@ public static class BackendProviderPresetCatalog
         new BackendProviderPreset(BackendProviderKind.Custom, "自定义", "https://api.example.com/v1", "", "填写任意 OpenAI-compatible /v1/chat/completions 接口。"),
         new BackendProviderPreset(BackendProviderKind.OpenAi, "OpenAI", "https://api.openai.com/v1", "gpt-4o-mini", "OpenAI 官方兼容接口，适合通用对话、提示词润色和编码。"),
         new BackendProviderPreset(BackendProviderKind.DeepSeek, "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "DeepSeek 官方 OpenAI-compatible 对话接口，可用于日常对话和编码规划。"),
-        new BackendProviderPreset(BackendProviderKind.MiniMax, "MiniMax", "https://api.minimax.chat/v1", "MiniMax-M1", "MiniMax OpenAI-compatible 对话接口，适合中文对话与长上下文场景。"),
+        new BackendProviderPreset(BackendProviderKind.MiniMax, "MiniMax", "https://api.minimax.chat/v1", "MiniMax-Text-01", "MiniMax OpenAI-compatible 对话接口；Starter key 已验证可用 MiniMax-Text-01。"),
         new BackendProviderPreset(BackendProviderKind.Mimo, "MiMo", "https://token-plan-cn.xiaomimimo.com/v1", "mimo-v2.5-pro", "小米 MiMo Token Plan OpenAI-compatible 对话接口；tp- 开头密钥优先使用该地址。"),
         new BackendProviderPreset(BackendProviderKind.Mino, "Mino", "https://api.mino.ai/v1", "mino-chat", "Mino 或同名中转接口预设；如供应商地址不同，可在应用后手动修改。"),
         new BackendProviderPreset(BackendProviderKind.Kimi, "Kimi", "https://api.moonshot.cn/v1", "moonshot-v1-8k", "Moonshot/Kimi OpenAI-compatible 接口，适合中文日常对话与代码问答。"),
