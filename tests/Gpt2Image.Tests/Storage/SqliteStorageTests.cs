@@ -27,6 +27,10 @@ public sealed class SqliteStorageTests : IDisposable
         Assert.Contains("generation_outputs", tables);
         Assert.Contains("input_assets", tables);
         Assert.Contains("agent_events", tables);
+        Assert.Contains("coding_runs", tables);
+        Assert.Contains("coding_events", tables);
+        Assert.Contains("coding_file_change_proposals", tables);
+        Assert.Contains("coding_command_proposals", tables);
         Assert.Contains("chat_conversations", tables);
         Assert.Contains("chat_messages", tables);
         Assert.Contains("schema_migrations", tables);
@@ -58,6 +62,33 @@ public sealed class SqliteStorageTests : IDisposable
         Assert.Equal("interrupted", verify.ExecuteScalar<string>("select status from generation_tasks where id = 'pending-id'"));
         Assert.Equal("interrupted", verify.ExecuteScalar<string>("select status from generation_tasks where id = 'running-id'"));
         Assert.Equal("completed", verify.ExecuteScalar<string>("select status from generation_tasks where id = 'done-id'"));
+    }
+
+    [Fact]
+    public void Initialize_marks_pending_and_running_coding_runs_as_interrupted()
+    {
+        var paths = CreatePaths();
+        var database = new SqliteDatabase(paths);
+        var initializer = new SqliteSchemaInitializer(database);
+        initializer.Initialize();
+
+        using (var connection = database.OpenConnection())
+        {
+            connection.Execute(
+                @"
+                insert into coding_runs (id, workspace_path, title, goal, status, model, created_at, updated_at)
+                values ('pending-coding', 'C:\\workspace', 'pending', 'goal', 'pending', 'gpt-4o-mini', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                       ('running-coding', 'C:\\workspace', 'running', 'goal', 'running', 'gpt-4o-mini', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
+                       ('waiting-coding', 'C:\\workspace', 'waiting', 'goal', 'waiting_for_approval', 'gpt-4o-mini', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
+                ");
+        }
+
+        initializer.Initialize();
+
+        using var verify = database.OpenConnection();
+        Assert.Equal("interrupted", verify.ExecuteScalar<string>("select status from coding_runs where id = 'pending-coding'"));
+        Assert.Equal("interrupted", verify.ExecuteScalar<string>("select status from coding_runs where id = 'running-coding'"));
+        Assert.Equal("waiting_for_approval", verify.ExecuteScalar<string>("select status from coding_runs where id = 'waiting-coding'"));
     }
 
     [Fact]
@@ -116,6 +147,7 @@ public sealed class SqliteStorageTests : IDisposable
             BaseUrl = "https://api.openai.com/v1",
             ApiKey = "sk-secret-value",
             Protocol = BackendProtocol.OpenAiResponses,
+            ProviderKind = BackendProviderKind.DeepSeek,
             MainlineModel = "gpt-5.5",
             ImageModel = "gpt-image-2",
             Concurrency = 2,
@@ -132,6 +164,7 @@ public sealed class SqliteStorageTests : IDisposable
         Assert.NotNull(loaded);
         Assert.Equal("sk-secret-value", loaded.ApiKey);
         Assert.Equal(BackendProtocol.OpenAiResponses, loaded.Protocol);
+        Assert.Equal(BackendProviderKind.DeepSeek, loaded.ProviderKind);
         Assert.Equal("gpt-image-2", loaded.ImageModel);
     }
 

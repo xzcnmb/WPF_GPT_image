@@ -11,7 +11,7 @@ using Gpt2Image.Core.Queue;
 using Gpt2Image.Core.Storage;
 using Gpt2Image.Core.Storage.Repositories;
 using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace Gpt2Image.Wpf.ViewModels;
 

@@ -22,12 +22,12 @@ public sealed class BackendProfileRepository
         connection.Execute(
             @"
             insert into backend_profiles (
-                id, name, base_url, protocol, api_key_ciphertext, mainline_model, image_model, video_model,
+                id, name, base_url, protocol, provider_kind, api_key_ciphertext, mainline_model, image_model, video_model,
                 concurrency, priority, is_enabled, supports_prompt, supports_chat, supports_image, supports_video,
                 supports_agent, failure_cooldown_until, created_at, updated_at
             )
             values (
-                @Id, @Name, @BaseUrl, @Protocol, @ApiKeyCiphertext, @MainlineModel, @ImageModel, @VideoModel,
+                @Id, @Name, @BaseUrl, @Protocol, @ProviderKind, @ApiKeyCiphertext, @MainlineModel, @ImageModel, @VideoModel,
                 @Concurrency, @Priority, @IsEnabled, @SupportsPrompt, @SupportsChat, @SupportsImage, @SupportsVideo,
                 @SupportsAgent, @FailureCooldownUntil, @Now, @Now
             )
@@ -35,6 +35,7 @@ public sealed class BackendProfileRepository
                 name = excluded.name,
                 base_url = excluded.base_url,
                 protocol = excluded.protocol,
+                provider_kind = excluded.provider_kind,
                 api_key_ciphertext = excluded.api_key_ciphertext,
                 mainline_model = excluded.mainline_model,
                 image_model = excluded.image_model,
@@ -56,6 +57,7 @@ public sealed class BackendProfileRepository
                 profile.Name,
                 BaseUrl = BackendProtocol.NormalizeBaseUrl(profile.BaseUrl, profile.Protocol),
                 Protocol = BackendProtocol.Normalize(profile.Protocol),
+                ProviderKind = BackendProviderKind.Normalize(profile.ProviderKind),
                 ApiKeyCiphertext = _secretProtector.Protect(profile.ApiKey),
                 profile.MainlineModel,
                 profile.ImageModel,
@@ -63,11 +65,11 @@ public sealed class BackendProfileRepository
                 Concurrency = Math.Max(1, profile.Concurrency),
                 profile.Priority,
                 IsEnabled = profile.IsEnabled ? 1 : 0,
-                SupportsPrompt = profile.SupportsPromptOptimization ? 1 : 0,
-                SupportsChat = profile.SupportsChat ? 1 : 0,
-                SupportsImage = profile.SupportsImageGeneration ? 1 : 0,
-                SupportsVideo = profile.SupportsVideoGeneration ? 1 : 0,
-                SupportsAgent = profile.SupportsAgent ? 1 : 0,
+                SupportsPrompt = profile.SupportsPromptOptimization && BackendProtocol.SupportsChat(profile.Protocol) ? 1 : 0,
+                SupportsChat = profile.SupportsChat && BackendProtocol.SupportsChat(profile.Protocol) ? 1 : 0,
+                SupportsImage = profile.SupportsImageGeneration && BackendProtocol.SupportsImage(profile.Protocol) ? 1 : 0,
+                SupportsVideo = profile.SupportsVideoGeneration || BackendProtocol.SupportsVideo(profile.Protocol) ? 1 : 0,
+                SupportsAgent = profile.SupportsAgent || BackendProtocol.SupportsAgent(profile.Protocol) ? 1 : 0,
                 FailureCooldownUntil = profile.FailureCooldownUntil?.ToString("O"),
                 Now = now
             });
@@ -101,12 +103,29 @@ public sealed class BackendProfileRepository
             .ToList();
     }
 
+    public IReadOnlyList<BackendProfile> ListAll()
+    {
+        using var connection = _database.OpenConnection();
+        return connection.Query<BackendProfileRow>(SelectSql + " order by priority desc, name")
+            .Select(ToProfile)
+            .ToList();
+    }
+
+    public IReadOnlyList<BackendProfile> ListForRole(string role, bool includeDisabled = false)
+    {
+        var normalizedRole = BackendProfileRole.Normalize(role);
+        return (includeDisabled ? ListAll() : ListEnabled())
+            .Where(profile => SupportsRole(profile, normalizedRole))
+            .ToList();
+    }
+
     private static bool SupportsRole(BackendProfile profile, string role) => role switch
     {
         BackendProfileRole.Prompt => profile.SupportsPromptOptimization && BackendProtocol.SupportsChat(profile.Protocol),
         BackendProfileRole.Chat => profile.SupportsChat && BackendProtocol.SupportsChat(profile.Protocol),
         BackendProfileRole.Video => profile.SupportsVideoGeneration && BackendProtocol.SupportsVideo(profile.Protocol),
         BackendProfileRole.Agent => profile.SupportsAgent && BackendProtocol.SupportsAgent(profile.Protocol),
+        BackendProfileRole.Coding => profile.SupportsChat && BackendProtocol.SupportsChat(profile.Protocol),
         _ => profile.SupportsImageGeneration && BackendProtocol.SupportsImage(profile.Protocol)
     };
 
@@ -117,6 +136,7 @@ public sealed class BackendProfileRepository
         BaseUrl = row.BaseUrl,
         ApiKey = _secretProtector.Unprotect(row.ApiKeyCiphertext),
         Protocol = BackendProtocol.Normalize(row.Protocol),
+        ProviderKind = BackendProviderKind.Normalize(row.ProviderKind),
         MainlineModel = row.MainlineModel,
         ImageModel = row.ImageModel,
         VideoModel = row.VideoModel,
@@ -132,7 +152,7 @@ public sealed class BackendProfileRepository
     };
 
     private const string SelectSql = @"
-        select id, name, base_url as BaseUrl, protocol,
+        select id, name, base_url as BaseUrl, protocol, provider_kind as ProviderKind,
                api_key_ciphertext as ApiKeyCiphertext,
                mainline_model as MainlineModel, image_model as ImageModel, video_model as VideoModel,
                concurrency, priority, is_enabled as IsEnabled,
@@ -148,6 +168,7 @@ public sealed class BackendProfileRepository
         public string Name { get; init; } = "";
         public string BaseUrl { get; init; } = "";
         public string Protocol { get; init; } = BackendProtocol.OpenAiImages;
+        public string ProviderKind { get; init; } = BackendProviderKind.Custom;
         public string ApiKeyCiphertext { get; init; } = "";
         public string MainlineModel { get; init; } = "";
         public string ImageModel { get; init; } = "";

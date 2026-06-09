@@ -10,6 +10,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly CreatePageViewModel _create;
     private readonly VideoGenerationPageViewModel _video;
     private readonly AgentPageViewModel _agent;
+    private readonly CodingPageViewModel _coding;
     private readonly ChatPageViewModel _chat;
     private readonly HistoryPageViewModel _history;
     private readonly SettingsPageViewModel _settings;
@@ -21,7 +22,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private NavigationMenuItemViewModel? _selectedNavigationItem;
 
     [ObservableProperty]
-    private string _statusText = "创作中心";
+    private string _statusText = "小智工作台";
 
     public ObservableCollection<NavigationMenuItemViewModel> NavigationItems { get; } = new();
     public ObservableCollection<NavigationMenuItemViewModel> FooterNavigationItems { get; } = new();
@@ -31,6 +32,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CreatePageViewModel create,
         VideoGenerationPageViewModel video,
         AgentPageViewModel agent,
+        CodingPageViewModel coding,
         ChatPageViewModel chat,
         HistoryPageViewModel history,
         SettingsPageViewModel settings)
@@ -38,17 +40,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _create = create;
         _video = video;
         _agent = agent;
+        _coding = coding;
         _chat = chat;
         _history = history;
         _settings = settings;
         _currentPage = _create;
 
-        NavigationItems.Add(new NavigationMenuItemViewModel("图片生成", "创作中心", "Image", _create));
-        NavigationItems.Add(new NavigationMenuItemViewModel("视频生成", "创作中心", "Video", _video));
-        NavigationItems.Add(new NavigationMenuItemViewModel("自动任务 / Goal", "自动化", "Robot", _agent));
-        NavigationItems.Add(new NavigationMenuItemViewModel("对话", "工作区", "Chat", _chat, () => _chat.RefreshConversations()));
-        NavigationItems.Add(new NavigationMenuItemViewModel("历史记录", "内容管理", "History", _history, () => _history.RefreshHistory()));
-        NavigationItems.Add(new NavigationMenuItemViewModel("设置", "系统", "Cog", _settings));
+        NavigationItems.Add(new NavigationMenuItemViewModel("AI 图像创作", "内容创作", "Image", _create));
+        NavigationItems.Add(new NavigationMenuItemViewModel("AI 视频创作", "内容创作", "Video", _video));
+        NavigationItems.Add(new NavigationMenuItemViewModel("AI 对话助手", "智能协作", "Chat", _chat, () => _chat.RefreshConversations()));
+        NavigationItems.Add(new NavigationMenuItemViewModel("智能任务", "自动化", "Robot", _agent));
+        NavigationItems.Add(new NavigationMenuItemViewModel("AI 编码助手", "开发工作台", "CodeBraces", _coding));
+        NavigationItems.Add(new NavigationMenuItemViewModel("历史与资产", "资产管理", "History", _history, () => _history.RefreshHistory()));
+        FooterNavigationItems.Add(new NavigationMenuItemViewModel("模型与设置", "系统设置", "Cog", _settings));
         SelectedNavigationItem = NavigationItems.FirstOrDefault();
     }
 

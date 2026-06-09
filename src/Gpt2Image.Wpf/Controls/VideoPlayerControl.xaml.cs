@@ -5,7 +5,7 @@ using LibVLCSharp.Shared;
 
 namespace Gpt2Image.Wpf.Controls;
 
-public partial class VideoPlayerControl : UserControl, IDisposable
+public partial class VideoPlayerControl : System.Windows.Controls.UserControl, IDisposable
 {
     private static readonly Lazy<LibVLC> SharedLibVlc = new(() =>
     {

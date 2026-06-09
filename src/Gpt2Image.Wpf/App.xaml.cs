@@ -1,11 +1,13 @@
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using Gpt2Image.Core.Agent;
 using Gpt2Image.Core.Api;
 using Gpt2Image.Core.Queue;
 using Gpt2Image.Core.Security;
 using Gpt2Image.Core.Storage;
 using Gpt2Image.Core.Storage.Repositories;
+using Gpt2Image.Wpf.Services;
 using Gpt2Image.Wpf.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -41,8 +43,14 @@ public partial class App
                 services.AddSingleton<GenerationTaskRepository>();
                 services.AddSingleton<ChatRepository>();
                 services.AddSingleton<InputAssetRepository>();
+                services.AddSingleton<CodingAgentRepository>();
                 services.AddSingleton<LocalImageStorage>();
                 services.AddSingleton<LocalMediaStorage>();
+                services.AddSingleton<ICodingWorkspaceService, CodingWorkspaceService>();
+                services.AddSingleton<IFileChangeService, FileChangeService>();
+                services.AddSingleton<CommandSafetyClassifier>();
+                services.AddSingleton<IProcessRunner, ProcessRunner>();
+                services.AddSingleton<IFolderPickerService, FolderPickerService>();
                 services.AddSingleton<IGenerationQueue>(_ => new GenerationQueue(new GenerationQueueOptions(GlobalConcurrency: 2)));
                 services.AddHttpClient<IImageGenerationClient, OpenAiCompatibleImageClient>()
                     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
@@ -56,10 +64,17 @@ public partial class App
                         AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
                         PooledConnectionLifetime = TimeSpan.FromMinutes(10)
                     });
+                services.AddHttpClient<ICodingAgentClient, OpenAiCompatibleCodingAgentClient>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                    {
+                        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+                        PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+                    });
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddTransient<CreatePageViewModel>();
                 services.AddTransient<VideoGenerationPageViewModel>();
                 services.AddTransient<AgentPageViewModel>();
+                services.AddTransient<CodingPageViewModel>();
                 services.AddTransient<ChatPageViewModel>();
                 services.AddTransient<HistoryPageViewModel>();
                 services.AddSingleton<SettingsPageViewModel>();

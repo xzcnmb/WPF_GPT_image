@@ -4,7 +4,8 @@
         xmlns:views="clr-namespace:Gpt2Image.Wpf.Views"
         xmlns:viewModels="clr-namespace:Gpt2Image.Wpf.ViewModels"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="GPT2Image Studio" Width="1440" Height="920" MinWidth="1180" MinHeight="780"
+        xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
+        Title="小智 AI Studio" Width="1440" Height="920" MinWidth="1180" MinHeight="780"
         Background="{StaticResource AppBackgroundBrush}">
     <Window.Resources>
         <DataTemplate DataType="{x:Type viewModels:CreatePageViewModel}">
@@ -16,6 +17,9 @@
         <DataTemplate DataType="{x:Type viewModels:AgentPageViewModel}">
             <views:AgentPage />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type viewModels:CodingPageViewModel}">
+            <views:CodingPage />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type viewModels:ChatPageViewModel}">
             <views:ChatPage />
         </DataTemplate>
@@ -25,6 +29,16 @@
         <DataTemplate DataType="{x:Type viewModels:SettingsPageViewModel}">
             <views:SettingsPage />
         </DataTemplate>
+
+        <CollectionViewSource x:Key="NavigationItemsView" Source="{Binding NavigationItems}">
+            <CollectionViewSource.GroupDescriptions>
+                <data:PropertyGroupDescription PropertyName="Group" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
+
+        <Style x:Key="NavigationGroupHeaderTextStyle" TargetType="TextBlock" BasedOn="{StaticResource EyebrowTextStyle}">
+            <Setter Property="Margin" Value="4,14,0,8" />
+        </Style>
 
         <Style x:Key="NavigationListBoxStyle" TargetType="ListBox">
             <Setter Property="BorderThickness" Value="0" />
@@ -59,20 +73,19 @@
         <DataTemplate x:Key="NavigationItemTemplate">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="34" />
+                    <ColumnDefinition Width="36" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <materialDesign:PackIcon x:Name="Icon" Kind="{Binding Icon}" Width="22" Height="22" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="#0F766E" />
-                <StackPanel Grid.Column="1">
-                    <TextBlock x:Name="Title" Text="{Binding Title}" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="Group" Text="{Binding Group}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,2,0,0" />
-                </StackPanel>
+                <Border x:Name="IconShell" Width="30" Height="30" CornerRadius="10" Background="{StaticResource AccentSoftBrush}" VerticalAlignment="Center">
+                    <materialDesign:PackIcon x:Name="Icon" Kind="{Binding Icon}" Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                </Border>
+                <TextBlock Grid.Column="1" x:Name="Title" Text="{Binding Title}" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
-                    <Setter TargetName="Icon" Property="Foreground" Value="#FFFFFF" />
+                    <Setter TargetName="IconShell" Property="Background" Value="#FFFFFF" />
+                    <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource AccentBrush}" />
                     <Setter TargetName="Title" Property="Foreground" Value="#FFFFFF" />
-                    <Setter TargetName="Group" Property="Foreground" Value="#DDF7F2" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -93,15 +106,15 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Width="42" Height="42" CornerRadius="13" Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
-                        <materialDesign:PackIcon Kind="Palette" Width="24" Height="24" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <materialDesign:PackIcon Kind="Robot" Width="24" Height="24" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel>
-                        <TextBlock Text="GPT2Image Studio" FontSize="20" FontWeight="SemiBold" />
-                        <TextBlock Text="AI Creative Workspace" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                        <TextBlock Text="小智 AI Studio" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock Text="多模型 AI 助手工作台" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
                     </StackPanel>
                 </StackPanel>
 
-                <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#F8FAFC" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" CornerRadius="999" Padding="14,7">
+                <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource StatusPillStyle}">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="ViewDashboard" Width="18" Height="18" Foreground="{StaticResource AccentBrush}" Margin="0,0,8,0" />
                         <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource TextSecondaryBrush}" FontWeight="SemiBold" />
@@ -109,7 +122,7 @@
                 </Border>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="#F8FAFC" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" CornerRadius="999" Padding="12,7">
+                    <Border Style="{StaticResource StatusPillStyle}" Background="#ECFDF5" BorderBrush="#BBF7D0">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="DatabaseCheck" Width="18" Height="18" Foreground="{StaticResource SuccessBrush}" Margin="0,0,8,0" />
                             <TextBlock Text="本地工作区" Foreground="{StaticResource TextSecondaryBrush}" />
@@ -129,16 +142,29 @@
             <Border Grid.Column="0" Style="{StaticResource AppCardStyle}" Padding="16">
                 <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Top">
-                        <TextBlock Text="工作导航" Style="{StaticResource SectionTitleTextStyle}" />
-                        <TextBlock Text="创作、对话、历史和系统能力按工作区组织，后续新功能可直接加入。" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,5,0,16" />
-                        <ListBox ItemsSource="{Binding NavigationItems}"
+                        <TextBlock Text="助手工作区" Style="{StaticResource SectionTitleTextStyle}" />
+                        <TextBlock Text="按创作、对话、自动化、编码和资产分类组织，让小智成为聚合型 AI 助手。" Style="{StaticResource SectionSubtitleTextStyle}" Margin="0,5,0,12" />
+                        <ListBox ItemsSource="{Binding Source={StaticResource NavigationItemsView}}"
                                  SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
                                  ItemTemplate="{StaticResource NavigationItemTemplate}"
                                  Style="{StaticResource NavigationListBoxStyle}"
-                                 ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}" />
+                                 ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}">
+                            <ListBox.GroupStyle>
+                                <GroupStyle>
+                                    <GroupStyle.HeaderTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource NavigationGroupHeaderTextStyle}" />
+                                        </DataTemplate>
+                                    </GroupStyle.HeaderTemplate>
+                                </GroupStyle>
+                            </ListBox.GroupStyle>
+                        </ListBox>
                     </StackPanel>
 
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                        <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0" Margin="0,0,0,6">
+                            <TextBlock Text="系统" Style="{StaticResource NavigationGroupHeaderTextStyle}" Margin="4,0,0,8" />
+                        </Border>
                         <ListBox ItemsSource="{Binding FooterNavigationItems}"
                                  SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
                                  ItemTemplate="{StaticResource NavigationItemTemplate}"

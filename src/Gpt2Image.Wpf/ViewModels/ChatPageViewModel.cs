@@ -12,7 +12,8 @@ using Gpt2Image.Core.Models;
 using Gpt2Image.Core.Storage;
 using Gpt2Image.Core.Storage.Repositories;
 using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
+using Clipboard = System.Windows.Clipboard;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace Gpt2Image.Wpf.ViewModels;
 
@@ -43,6 +44,9 @@ public sealed partial class ChatPageViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(DeleteConversationCommand))]
     private ChatConversationItemViewModel? _selectedConversation;
 
+    [ObservableProperty]
+    private BackendProfileItemViewModel? _selectedChatProfile;
+
     public ChatPageViewModel(
         BackendProfileRepository profiles,
         ChatRepository chats,
@@ -58,16 +62,34 @@ public sealed partial class ChatPageViewModel : ObservableObject
         _client = client;
         _logger = logger;
         PendingAttachments.CollectionChanged += OnPendingAttachmentsChanged;
+        RefreshChatProfiles();
         RefreshConversations();
     }
 
     public ObservableCollection<ChatConversationItemViewModel> Conversations { get; } = new();
     public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
     public ObservableCollection<ChatAttachmentViewModel> PendingAttachments { get; } = new();
+    public ObservableCollection<BackendProfileItemViewModel> AvailableChatProfiles { get; } = new();
+
+    [RelayCommand]
+    public void RefreshChatProfiles()
+    {
+        var selectedId = SelectedChatProfile?.Id;
+        AvailableChatProfiles.Clear();
+        foreach (var profile in _profiles.ListEnabledForRole(BackendProfileRole.Chat))
+        {
+            AvailableChatProfiles.Add(BackendProfileItemViewModel.FromProfile(profile));
+        }
+
+        SelectedChatProfile = !string.IsNullOrWhiteSpace(selectedId)
+            ? AvailableChatProfiles.FirstOrDefault(item => item.Id == selectedId) ?? AvailableChatProfiles.FirstOrDefault()
+            : AvailableChatProfiles.FirstOrDefault();
+    }
 
     [RelayCommand]
     public void RefreshConversations()
     {
+        RefreshChatProfiles();
         var selectedId = SelectedConversation?.Id;
         Conversations.Clear();
         foreach (var conversation in _chats.ListConversations())
@@ -306,6 +328,15 @@ public sealed partial class ChatPageViewModel : ObservableObject
             if (existingProfile is not null && IsChatUsableProfile(existingProfile))
             {
                 return existingProfile;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(SelectedChatProfile?.Id))
+        {
+            var selectedProfile = _profiles.GetById(SelectedChatProfile.Id);
+            if (selectedProfile is not null && IsChatUsableProfile(selectedProfile))
+            {
+                return selectedProfile;
             }
         }
 

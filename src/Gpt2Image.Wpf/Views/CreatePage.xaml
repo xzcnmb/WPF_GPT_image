@@ -17,7 +17,7 @@
 
         <Grid Margin="0,0,0,18">
             <StackPanel>
-                <TextBlock Text="图片生成" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="AI 图像创作" Style="{StaticResource PageTitleTextStyle}" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,5,24,0" />
             </StackPanel>
         </Grid>
@@ -29,7 +29,7 @@
                 <ColumnDefinition Width="*" MinWidth="540" />
             </Grid.ColumnDefinitions>
 
-            <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="16">
+            <Border Style="{StaticResource SectionCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -66,7 +66,7 @@
                                          Visibility="{Binding IsOptimizingPrompt, Converter={StaticResource BoolToVisibilityConverter}}"
                                          Margin="0,0,0,14" />
 
-                            <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="#F8FAFC" Padding="10" Margin="0,0,0,14">
+                            <Border Style="{StaticResource MutedSectionCardStyle}" Margin="0,0,0,14">
                                 <StackPanel>
                                     <Grid Margin="0,0,0,8">
                                         <Grid.ColumnDefinitions>
@@ -162,7 +162,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="2" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="16">
+            <Border Grid.Column="2" Style="{StaticResource SectionCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -185,7 +185,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Width="420" Height="540" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="#F8FAFC" Margin="0,0,14,14">
+                                    <Border Width="420" Height="540" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" CornerRadius="16" Background="#F8FAFC" Margin="0,0,14,14">
                                         <Border.ContextMenu>
                                             <ContextMenu>
                                                 <MenuItem Header="保存到..." Command="{Binding SaveAsCommand}" />
@@ -274,7 +274,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="14" Margin="0,18,0,0">
+        <Border Grid.Row="2" Style="{StaticResource SectionCardStyle}" Margin="0,18,0,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />

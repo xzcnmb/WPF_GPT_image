@@ -4,7 +4,8 @@ using System.Net.Http;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Win32;
+using Clipboard = System.Windows.Clipboard;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace Gpt2Image.Wpf.ViewModels;
 

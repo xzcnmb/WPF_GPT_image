@@ -20,7 +20,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="历史" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="历史与资产" Style="{StaticResource PageTitleTextStyle}" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,5,0,0" />
             </StackPanel>
             <Button Grid.Column="1" Content="刷新" Command="{Binding RefreshCommand}" />
@@ -33,7 +33,7 @@
                 <ColumnDefinition Width="*" MinWidth="520" />
             </Grid.ColumnDefinitions>
 
-            <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="14">
+            <Border Style="{StaticResource SectionCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -69,7 +69,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="2" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="14">
+            <Border Grid.Column="2" Style="{StaticResource SectionCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -85,7 +85,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Width="350" Height="456" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="#F8FAFC" Margin="0,0,14,14">
+                                    <Border Width="350" Height="456" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" CornerRadius="16" Background="#F8FAFC" Margin="0,0,14,14">
                                         <Border.ContextMenu>
                                             <ContextMenu>
                                                 <MenuItem Header="保存到..." Command="{Binding SaveAsCommand}" />

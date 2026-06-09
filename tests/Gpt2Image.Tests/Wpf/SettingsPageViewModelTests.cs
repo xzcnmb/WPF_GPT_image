@@ -159,7 +159,7 @@ public sealed class SettingsPageViewModelTests : IDisposable
 
         Assert.Equal("", viewModel.ApiKey);
         Assert.Equal("https://api.openai.com/v1", viewModel.BaseUrl);
-        Assert.Equal("图片生成 API", viewModel.Name);
+        Assert.Equal("图像创作 API", viewModel.Name);
         Assert.Equal(BackendProtocol.OpenAiImages, viewModel.SelectedProtocol);
     }
 

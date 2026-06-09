@@ -7,6 +7,7 @@ public sealed class BackendProfile
     public string BaseUrl { get; init; } = "";
     public string ApiKey { get; init; } = "";
     public string Protocol { get; init; } = BackendProtocol.OpenAiImages;
+    public string ProviderKind { get; init; } = BackendProviderKind.Custom;
     public string MainlineModel { get; init; } = "";
     public string ImageModel { get; init; } = "";
     public string VideoModel { get; init; } = "";
@@ -28,6 +29,7 @@ public static class BackendProfileRole
     public const string Image = "image";
     public const string Video = "video";
     public const string Agent = "agent";
+    public const string Coding = "coding";
 
     public static IReadOnlyList<string> KnownValues { get; } = new[]
     {
@@ -35,7 +37,8 @@ public static class BackendProfileRole
         Chat,
         Image,
         Video,
-        Agent
+        Agent,
+        Coding
     };
 
     public static string Normalize(string? value)
@@ -52,6 +55,7 @@ public static class BackendProfileRole
         Chat => "聊天 API",
         Video => "视频生成 API",
         Agent => "Agent / Responses API",
+        Coding => "AI 自动编码",
         _ => "图片生成 API"
     };
 
@@ -61,8 +65,95 @@ public static class BackendProfileRole
         Chat => "chat-default",
         Video => "video-default",
         Agent => "agent-default",
+        Coding => "coding-default",
         _ => "image-default"
     };
+}
+
+public static class BackendProviderKind
+{
+    public const string Custom = "custom";
+    public const string OpenAi = "openai";
+    public const string DeepSeek = "deepseek";
+    public const string MiniMax = "minimax";
+    public const string Mino = "mino";
+    public const string Kimi = "kimi";
+    public const string Qwen = "qwen";
+    public const string Glm = "glm";
+    public const string Routin = "routin";
+
+    public static IReadOnlyList<string> KnownValues { get; } = new[]
+    {
+        Custom,
+        OpenAi,
+        DeepSeek,
+        MiniMax,
+        Mino,
+        Kimi,
+        Qwen,
+        Glm,
+        Routin
+    };
+
+    public static string Normalize(string? value)
+    {
+        var trimmed = value?.Trim();
+        return KnownValues.Contains(trimmed, StringComparer.OrdinalIgnoreCase)
+            ? KnownValues.First(item => string.Equals(item, trimmed, StringComparison.OrdinalIgnoreCase))
+            : Custom;
+    }
+
+    public static string DisplayName(string? value) => Normalize(value) switch
+    {
+        OpenAi => "OpenAI",
+        DeepSeek => "DeepSeek 深度求索",
+        MiniMax => "MiniMax",
+        Mino => "Mino / 自定义兼容",
+        Kimi => "Kimi / Moonshot",
+        Qwen => "Qwen / 通义千问",
+        Glm => "GLM / 智谱清言",
+        Routin => "Routin",
+        _ => "自定义 OpenAI-compatible"
+    };
+}
+
+public sealed class BackendProviderPreset
+{
+    public BackendProviderPreset(string kind, string label, string baseUrl, string mainlineModel, string description)
+    {
+        Kind = kind;
+        Label = label;
+        BaseUrl = baseUrl;
+        MainlineModel = mainlineModel;
+        Description = description;
+    }
+
+    public string Kind { get; }
+    public string Label { get; }
+    public string BaseUrl { get; }
+    public string MainlineModel { get; }
+    public string Description { get; }
+}
+
+public static class BackendProviderPresetCatalog
+{
+    public static IReadOnlyList<BackendProviderPreset> TextCompatiblePresets { get; } = new[]
+    {
+        new BackendProviderPreset(BackendProviderKind.Custom, "自定义", "https://api.example.com/v1", "", "填写任意 OpenAI-compatible /v1/chat/completions 接口。"),
+        new BackendProviderPreset(BackendProviderKind.OpenAi, "OpenAI", "https://api.openai.com/v1", "gpt-4o-mini", "OpenAI 官方兼容接口，适合通用对话、提示词润色和编码。"),
+        new BackendProviderPreset(BackendProviderKind.DeepSeek, "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "DeepSeek 官方 OpenAI-compatible 对话接口，可用于日常对话和编码规划。"),
+        new BackendProviderPreset(BackendProviderKind.MiniMax, "MiniMax", "https://api.minimax.chat/v1", "MiniMax-M1", "MiniMax OpenAI-compatible 对话接口，适合中文对话与长上下文场景。"),
+        new BackendProviderPreset(BackendProviderKind.Mino, "Mino", "https://api.mino.ai/v1", "mino-chat", "Mino 或同名中转接口预设；如供应商地址不同，可在应用后手动修改。"),
+        new BackendProviderPreset(BackendProviderKind.Kimi, "Kimi", "https://api.moonshot.cn/v1", "moonshot-v1-8k", "Moonshot/Kimi OpenAI-compatible 接口，适合中文日常对话与代码问答。"),
+        new BackendProviderPreset(BackendProviderKind.Qwen, "Qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus", "阿里云 DashScope OpenAI 兼容模式，适合通义千问系列模型。"),
+        new BackendProviderPreset(BackendProviderKind.Glm, "GLM", "https://open.bigmodel.cn/api/paas/v4", "glm-4-flash", "智谱 GLM OpenAI-compatible 接口，适合日常对话和轻量编码。")
+    };
+
+    public static BackendProviderPreset GetTextPreset(string? kind)
+    {
+        var normalized = BackendProviderKind.Normalize(kind);
+        return TextCompatiblePresets.FirstOrDefault(item => item.Kind == normalized) ?? TextCompatiblePresets[0];
+    }
 }
 
 public static class BackendProtocol

@@ -1,6 +1,7 @@
 <UserControl x:Class="Gpt2Image.Wpf.Views.ChatPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:converters="clr-namespace:Gpt2Image.Wpf.Converters">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -20,8 +21,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="对话" Style="{StaticResource PageTitleTextStyle}" />
-                <TextBlock Text="支持文本、图片和文本/代码附件；代码块会以等宽格式显示。" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" />
+                <TextBlock Text="AI 对话助手" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="支持 DeepSeek、MiniMax、Mino、Kimi、Qwen、GLM 等聊天兼容模型，文本、图片和代码附件会以更自然的会话卡片展示。" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,5,0,0" />
             </StackPanel>
             <ProgressBar Grid.Column="1"
@@ -39,7 +40,7 @@
                 <ColumnDefinition Width="*" MinWidth="560" />
             </Grid.ColumnDefinitions>
 
-            <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="14">
+            <Border Style="{StaticResource SectionCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -87,14 +88,30 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="2" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="14">
+            <Border Grid.Column="2" Style="{StaticResource SectionCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="聊天内容" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="聊天内容" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="为新会话选择模型供应商，已有会话会继续使用创建时的模型。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding AvailableChatProfiles}"
+                                  SelectedItem="{Binding SelectedChatProfile}"
+                                  DisplayMemberPath="DisplayText"
+                                  materialDesign:HintAssist.Hint="对话模型" />
+                        <Button Grid.Column="2" Content="刷新模型" Command="{Binding RefreshChatProfilesCommand}" Style="{StaticResource ChatActionButtonStyle}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </Grid>
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding Messages}">
@@ -105,8 +122,10 @@
                                             BorderBrush="{StaticResource SubtleBorderBrush}"
                                             BorderThickness="1"
                                             Background="#FFFFFF"
-                                            Padding="12"
-                                            Margin="0,0,0,12"
+                                            CornerRadius="18"
+                                            Padding="16"
+                                            Margin="0,0,0,14"
+                                            materialDesign:ElevationAssist.Elevation="Dp1"
                                             HorizontalAlignment="Left">
                                         <StackPanel>
                                             <Grid Margin="0,0,0,6">
@@ -114,7 +133,12 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding RoleText}" FontWeight="SemiBold" Foreground="#334155" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="24" Height="24" CornerRadius="12" Background="{StaticResource AccentSoftBrush}" Margin="0,0,8,0">
+                                                        <materialDesign:PackIcon Kind="Robot" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                                                    </Border>
+                                                    <TextBlock Text="{Binding RoleText}" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" />
+                                                </StackPanel>
                                                 <TextBlock Grid.Column="1" Text="{Binding CreatedAtText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
                                             </Grid>
 
@@ -126,7 +150,7 @@
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border BorderBrush="#CBD5E1" BorderThickness="1" Background="#F8FAFC" Padding="6" Margin="0,0,8,8" Width="150">
+                                                        <Border BorderBrush="#CBD5E1" BorderThickness="1" Background="#F8FAFC" CornerRadius="12" Padding="8" Margin="0,0,8,8" Width="158" materialDesign:ElevationAssist.Elevation="Dp1">
                                                             <StackPanel>
                                                                 <Image x:Name="AttachmentImage" Source="{Binding PreviewSource, Converter={StaticResource Base64ImageSourceConverter}}" Height="84" Stretch="UniformToFill" Visibility="Collapsed" />
                                                                 <Border x:Name="AttachmentFile" Height="36" Background="#E2E8F0" Visibility="Visible" Margin="0,0,0,4">
@@ -153,13 +177,18 @@
                                                             <TextBlock x:Name="TextBlockPart"
                                                                        Text="{Binding Text}"
                                                                        TextWrapping="Wrap"
-                                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                                                       FontSize="14"
+                                                                       LineHeight="22"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                                       TextOptions.TextFormattingMode="Ideal" />
                                                             <Border x:Name="CodeBlockPart"
                                                                     Visibility="Collapsed"
                                                                     Background="#0F172A"
                                                                     BorderBrush="#1E293B"
                                                                     BorderThickness="1"
-                                                                    Padding="0">
+                                                                    CornerRadius="14"
+                                                                    Padding="0"
+                                                                    ClipToBounds="True">
                                                                 <Grid>
                                                                     <Grid.RowDefinitions>
                                                                         <RowDefinition Height="Auto" />
@@ -227,7 +256,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderBrush="#CBD5E1" BorderThickness="1" Background="#F8FAFC" Padding="6" Margin="0,0,8,8" Width="150">
+                                        <Border BorderBrush="#CBD5E1" BorderThickness="1" Background="#F8FAFC" CornerRadius="12" Padding="8" Margin="0,0,8,8" Width="158" materialDesign:ElevationAssist.Elevation="Dp1">
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
