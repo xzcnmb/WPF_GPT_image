@@ -14,7 +14,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="智能任务" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="任务" Style="{StaticResource PageTitleTextStyle}" />
                 <TextBlock Text="把复杂目标拆成可控轮次执行：先写目标，再选择是否联网搜索，最后观察状态反馈。"
                            Style="{StaticResource PageSubtitleTextStyle}" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,6,24,0" />

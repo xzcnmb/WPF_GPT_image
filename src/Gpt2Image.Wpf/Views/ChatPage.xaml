@@ -21,8 +21,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="AI 对话助手" Style="{StaticResource PageTitleTextStyle}" />
-                <TextBlock Text="支持 DeepSeek、MiniMax、MiMo、Kimi、Qwen、GLM 等聊天兼容模型，文本、图片和代码附件会以更自然的会话卡片展示。" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" />
+                <TextBlock Text="对话" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="选择模型后即可开始对话；支持图片、文本和代码附件。" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,5,0,0" />
             </StackPanel>
             <ProgressBar Grid.Column="1"

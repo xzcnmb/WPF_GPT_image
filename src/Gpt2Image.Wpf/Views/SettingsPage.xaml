@@ -15,7 +15,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock Text="模型与连接设置" Style="{StaticResource PageTitleTextStyle}" />
-                <TextBlock Text="为小智 AI Studio 维护图像、视频、日常对话和 AI 编码的多供应商模型配置。"
+                <TextBlock Text="维护图像、视频、对话和编码所需的模型与接口配置。"
                            Style="{StaticResource PageSubtitleTextStyle}" />
                 <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,6,24,0" />
             </StackPanel>
@@ -238,7 +238,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="视频模型" FontWeight="SemiBold" />
-                                        <TextBlock Text="Routin xAI Video 默认推荐 grok-imagine-video。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                                        <TextBlock Text="视频接口默认推荐 grok-imagine-video。" Style="{StaticResource SectionSubtitleTextStyle}" />
                                     </StackPanel>
                                     <TextBox Grid.Column="1" Text="{Binding VideoModel, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" />
                                 </Grid>

@@ -5,7 +5,7 @@
         xmlns:viewModels="clr-namespace:Gpt2Image.Wpf.ViewModels"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
-        Title="小智 AI Studio" Width="1440" Height="920" MinWidth="1180" MinHeight="780"
+        Title="小智 Studio" Width="1440" Height="920" MinWidth="1180" MinHeight="780"
         Background="{StaticResource AppBackgroundBrush}">
     <Window.Resources>
         <DataTemplate DataType="{x:Type viewModels:CreatePageViewModel}">
@@ -106,11 +106,11 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Width="42" Height="42" CornerRadius="13" Background="{StaticResource AccentBrush}" Margin="0,0,12,0">
-                        <materialDesign:PackIcon Kind="Robot" Width="24" Height="24" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <materialDesign:PackIcon Kind="ViewDashboard" Width="24" Height="24" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel>
-                        <TextBlock Text="小智 AI Studio" FontSize="20" FontWeight="SemiBold" />
-                        <TextBlock Text="多模型 AI 助手工作台" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                        <TextBlock Text="小智 Studio" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock Text="创作、对话与开发工作台" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
                     </StackPanel>
                 </StackPanel>
 
@@ -142,8 +142,8 @@
             <Border Grid.Column="0" Style="{StaticResource AppCardStyle}" Padding="16">
                 <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Top">
-                        <TextBlock Text="助手工作区" Style="{StaticResource SectionTitleTextStyle}" />
-                        <TextBlock Text="按创作、对话、自动化、编码和资产分类组织，让小智成为聚合型 AI 助手。" Style="{StaticResource SectionSubtitleTextStyle}" Margin="0,5,0,12" />
+                        <TextBlock Text="工作区" Style="{StaticResource SectionTitleTextStyle}" />
+                        <TextBlock Text="按创作、对话、任务、编码和资产分类组织，快速进入对应流程。" Style="{StaticResource SectionSubtitleTextStyle}" Margin="0,5,0,12" />
                         <ListBox ItemsSource="{Binding Source={StaticResource NavigationItemsView}}"
                                  SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
                                  ItemTemplate="{StaticResource NavigationItemTemplate}"

@@ -251,7 +251,7 @@ public sealed partial class CodingPageViewModel : ObservableObject
                        ?? _profiles.GetFirstEnabledForRole(BackendProfileRole.Chat);
             if (profile is null)
             {
-                Status = "缺少 AI 自动编码或聊天后端配置，请先到设置页添加。";
+                Status = "缺少编码或聊天后端配置，请先到设置页添加。";
                 return;
             }
         }
@@ -301,7 +301,7 @@ public sealed partial class CodingPageViewModel : ObservableObject
             var snapshot = _workspace.BuildSnapshot(normalizedWorkspace);
             AddEvent(runId, CodingEventKind.FileRead, "工作区摘要", $"已提供 {snapshot.Files.Count} 个文件，跳过 {snapshot.SkippedFiles.Count} 个文件。", CodingProposalStatus.Applied);
 
-            Status = "正在请求 AI 生成编码方案...";
+            Status = "正在生成编码方案...";
             var response = await _client.GenerateProposalAsync(WithMainlineModel(profile, model), new CodingAgentRequest
             {
                 Goal = Goal.Trim(),
@@ -314,7 +314,7 @@ public sealed partial class CodingPageViewModel : ObservableObject
 
             if (!string.IsNullOrWhiteSpace(response.Message))
             {
-                AddEvent(runId, CodingEventKind.AssistantMessage, "AI 回复", response.Message, CodingProposalStatus.Applied, response.RawJson);
+                AddEvent(runId, CodingEventKind.AssistantMessage, "模型回复", response.Message, CodingProposalStatus.Applied, response.RawJson);
             }
 
             if (response.Plan.Count > 0)
@@ -329,7 +329,7 @@ public sealed partial class CodingPageViewModel : ObservableObject
 
             if (!string.IsNullOrWhiteSpace(response.Error))
             {
-                AddEvent(runId, CodingEventKind.Error, "AI 请求失败", response.Error, CodingProposalStatus.Failed, response.RawJson);
+                AddEvent(runId, CodingEventKind.Error, "请求失败", response.Error, CodingProposalStatus.Failed, response.RawJson);
                 _repository.UpdateRunStatus(runId, CodingRunStatus.Failed, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
                 Status = response.Error;
                 RefreshRuns();
@@ -432,7 +432,7 @@ public sealed partial class CodingPageViewModel : ObservableObject
                 AddEvent(runId, CodingEventKind.AssistantMessage, "运行完成", "没有待审批的文件变更或命令。", CodingProposalStatus.Applied);
             }
 
-            Status = waiting ? "已生成方案，等待你审批文件变更或命令。" : "AI 已完成分析，未生成可执行变更。";
+            Status = waiting ? "已生成方案，等待你审批文件变更或命令。" : "分析完成，未生成可执行变更。";
             RefreshRuns();
         }
         catch (OperationCanceledException)
