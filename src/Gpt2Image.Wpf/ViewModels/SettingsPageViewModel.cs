@@ -89,7 +89,7 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         BackendProfileRole.Image => "DeepSeek、Kimi、Qwen、GLM 等普通聊天模型不会出现在图像生成里；这里只显示 OpenAI Images/Responses 或自定义图片兼容接口。",
         BackendProfileRole.Video => "DeepSeek、MiniMax、Kimi、Qwen、GLM 等普通聊天模型不会出现在视频生成里；这里只显示 Routin xAI Video 等视频接口。",
         BackendProfileRole.Agent => "这里只显示支持 /v1/responses 的 Agent/工具调用接口。",
-        BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding => "这里只显示 OpenAI-compatible 文本/代码模型：DeepSeek、MiniMax、Mino、Kimi、Qwen、GLM 等。",
+        BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding => "这里只显示 OpenAI-compatible 文本/代码模型：DeepSeek、MiniMax、MiMo、Kimi、Qwen、GLM 等。",
         _ => "按当前功能过滤可用供应商，避免把聊天模型误用于图片或视频生成。"
     };
 
@@ -476,8 +476,8 @@ public sealed partial class SettingsPageViewModel : ObservableObject
         return normalizedRole switch
         {
             BackendProfileRole.Video when normalizedProvider != BackendProviderKind.Routin => "视频生成只能选择视频供应商，不能使用 DeepSeek/Kimi/Qwen/GLM 等纯文本模型。",
-            BackendProfileRole.Image when normalizedProvider is BackendProviderKind.DeepSeek or BackendProviderKind.MiniMax or BackendProviderKind.Mino or BackendProviderKind.Kimi or BackendProviderKind.Qwen or BackendProviderKind.Glm => "图像创作不能选择纯文本/编码模型；请选择 OpenAI 图像或自定义图片兼容接口。",
-            BackendProfileRole.Agent when normalizedProvider is BackendProviderKind.DeepSeek or BackendProviderKind.MiniMax or BackendProviderKind.Mino or BackendProviderKind.Kimi or BackendProviderKind.Qwen or BackendProviderKind.Glm or BackendProviderKind.Routin => "Agent/Responses 只能选择支持 /v1/responses 的供应商。",
+            BackendProfileRole.Image when normalizedProvider is BackendProviderKind.DeepSeek or BackendProviderKind.MiniMax or BackendProviderKind.Mimo or BackendProviderKind.Mino or BackendProviderKind.Kimi or BackendProviderKind.Qwen or BackendProviderKind.Glm => "图像创作不能选择纯文本/编码模型；请选择 OpenAI 图像或自定义图片兼容接口。",
+            BackendProfileRole.Agent when normalizedProvider is BackendProviderKind.DeepSeek or BackendProviderKind.MiniMax or BackendProviderKind.Mimo or BackendProviderKind.Mino or BackendProviderKind.Kimi or BackendProviderKind.Qwen or BackendProviderKind.Glm or BackendProviderKind.Routin => "Agent/Responses 只能选择支持 /v1/responses 的供应商。",
             BackendProfileRole.Prompt or BackendProfileRole.Chat or BackendProfileRole.Coding when normalizedProvider == BackendProviderKind.Routin => "对话/编码不能选择视频生成供应商。",
             _ => ""
         };

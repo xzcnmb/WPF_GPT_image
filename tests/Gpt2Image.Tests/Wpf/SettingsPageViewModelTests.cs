@@ -163,6 +163,33 @@ public sealed class SettingsPageViewModelTests : IDisposable
         Assert.Equal(BackendProtocol.OpenAiImages, viewModel.SelectedProtocol);
     }
 
+    [Fact]
+    public void Provider_options_are_filtered_by_selected_role_capability()
+    {
+        var repository = CreateRepository();
+        var viewModel = new SettingsPageViewModel(repository);
+
+        viewModel.SelectedProfileRole = BackendProfileRole.Image;
+        Assert.Contains(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.OpenAi);
+        Assert.DoesNotContain(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.DeepSeek);
+        Assert.DoesNotContain(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.Mimo);
+        Assert.DoesNotContain(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.Routin);
+
+        viewModel.SelectedProfileRole = BackendProfileRole.Video;
+        var videoProvider = Assert.Single(viewModel.ProviderOptions);
+        Assert.Equal(BackendProviderKind.Routin, videoProvider.Value);
+        var videoProtocol = Assert.Single(viewModel.ProtocolOptions);
+        Assert.Equal(BackendProtocol.RoutinXaiVideo, videoProtocol.Value);
+
+        viewModel.SelectedProfileRole = BackendProfileRole.Coding;
+        Assert.Contains(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.DeepSeek);
+        Assert.Contains(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.Mimo);
+        Assert.Contains(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.Qwen);
+        Assert.DoesNotContain(viewModel.ProviderOptions, item => item.Value == BackendProviderKind.Routin);
+        var codingProtocol = Assert.Single(viewModel.ProtocolOptions);
+        Assert.Equal(BackendProtocol.ChatCompletionsImageJson, codingProtocol.Value);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
