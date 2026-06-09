@@ -182,7 +182,7 @@ public static class BackendProtocol
     public static string DisplayName(string? value) => Normalize(value) switch
     {
         OpenAiResponses => "OpenAI Responses /v1/responses",
-        ChatCompletionsImageJson => "Chat Completions 图片 /v1/chat/completions",
+        ChatCompletionsImageJson => "OpenAI-compatible Chat Completions（DeepSeek/Kimi/Qwen/GLM 等）",
         RoutinXaiVideo => "Routin xAI Video /xai/v1/videos/generations",
         _ => "OpenAI Images /v1/images/generations"
     };
@@ -190,7 +190,7 @@ public static class BackendProtocol
     public static string Description(string? value) => Normalize(value) switch
     {
         OpenAiResponses => "适合支持 Responses image_generation 工具的接口。",
-        ChatCompletionsImageJson => "适合把图片以 Markdown、data URL 或 JSON 放在聊天回复里的中转接口。",
+        ChatCompletionsImageJson => "适合 DeepSeek、MiniMax、Mino、Kimi、Qwen、GLM 等 OpenAI-compatible /v1/chat/completions 接口；也兼容把图片以 Markdown、data URL 或 JSON 放在聊天回复里的中转接口。",
         RoutinXaiVideo => "适合 Routin xAI 视频中转接口，提交 request_id 后轮询视频结果。",
         _ => "适合标准 OpenAI 兼容图片接口，默认推荐。"
     };
