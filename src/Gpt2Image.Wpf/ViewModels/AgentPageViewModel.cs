@@ -34,10 +34,10 @@ public sealed partial class AgentPageViewModel : ObservableObject
     [RelayCommand]
     private async Task RunAsync(CancellationToken cancellationToken)
     {
-        var profile = _profiles.ListEnabled().FirstOrDefault();
+        var profile = _profiles.GetFirstEnabledForRole(BackendProfileRole.Agent);
         if (profile is null)
         {
-            Status = "缺少后端配置";
+            Status = "缺少 Agent / Responses 后端配置";
             return;
         }
 

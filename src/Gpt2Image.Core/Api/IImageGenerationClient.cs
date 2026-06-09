@@ -9,6 +9,9 @@ public interface IImageGenerationClient
     Task<PromptOptimizationResult> OptimizePromptAsync(BackendProfile profile, string prompt, CancellationToken cancellationToken)
         => Task.FromResult(new PromptOptimizationResult { OptimizedPrompt = prompt });
 
+    Task<PromptOptimizationResult> OptimizeVideoPromptAsync(BackendProfile profile, string prompt, CancellationToken cancellationToken)
+        => OptimizePromptAsync(profile, prompt, cancellationToken);
+
     Task<ChatResult> ChatAsync(BackendProfile profile, ChatRequest request, CancellationToken cancellationToken)
         => Task.FromResult(new ChatResult { Error = "当前客户端未实现聊天接口" });
 

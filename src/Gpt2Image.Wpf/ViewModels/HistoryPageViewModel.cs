@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
@@ -53,17 +54,37 @@ public sealed partial class HistoryPageViewModel : ObservableObject
 
         foreach (var output in _tasks.ListOutputs(value.Id))
         {
+            var mediaType = string.IsNullOrWhiteSpace(output.MediaType) ? "image" : output.MediaType;
             var preview = new GenerationPreviewItemViewModel(output.OutputIndex)
             {
-                PreviewBase64 = ResolvePreviewBase64(output),
+                MediaType = mediaType,
+                PreviewBase64 = string.Equals(mediaType, "image", StringComparison.OrdinalIgnoreCase) ? ResolvePreviewBase64(output) : null,
                 SourceUrl = output.SourceUrl,
                 FilePath = File.Exists(output.FilePath) ? output.FilePath : null,
+                DurationSeconds = output.DurationSeconds,
                 IsLoading = false,
-                Status = output.RevisedPrompt ?? "已生成",
+                Status = output.RevisedPrompt ?? BuildOutputStatus(mediaType, output),
                 SavedFilePathChanged = filePath => _tasks.UpdateOutputFilePath(value.Id, output.OutputIndex, filePath)
             };
+            if (string.Equals(mediaType, "video", StringComparison.OrdinalIgnoreCase))
+            {
+                preview.SetTitle($"视频 {output.OutputIndex + 1}");
+            }
+
             Outputs.Add(preview);
         }
+    }
+
+    private static string BuildOutputStatus(string mediaType, GenerationTaskOutputRecord output)
+    {
+        if (!string.Equals(mediaType, "video", StringComparison.OrdinalIgnoreCase))
+        {
+            return "已生成";
+        }
+
+        return !string.IsNullOrWhiteSpace(output.FilePath) && File.Exists(output.FilePath)
+            ? "视频已保存到本地，可在线播放"
+            : "视频可在线播放；如需本地文件请手动另存为";
     }
 
     private static string? ResolvePreviewBase64(GenerationTaskOutputRecord output)
@@ -91,6 +112,7 @@ public sealed class HistoryTaskItemViewModel
         Status = record.Status;
         Error = record.Error;
         OutputCount = record.OutputCount;
+        MediaType = string.IsNullOrWhiteSpace(record.PreviewMediaType) ? (string.Equals(record.Mode, "video", StringComparison.OrdinalIgnoreCase) ? "video" : "image") : record.PreviewMediaType;
         CreatedAtText = FormatTime(record.CreatedAt);
         Model = TryReadModel(record.ParametersJson);
     }
@@ -105,19 +127,28 @@ public sealed class HistoryTaskItemViewModel
 
     public int OutputCount { get; }
 
+    public string MediaType { get; }
+
     public string CreatedAtText { get; }
 
     public string Model { get; }
 
     public string ShortId => Id.Length <= 8 ? Id : Id[..8];
 
-    public string Summary => $"{CreatedAtText} · {Status} · {OutputCount} 张";
+    public string Summary => $"{CreatedAtText} · {Status} · {OutputCount} {(string.Equals(MediaType, "video", StringComparison.OrdinalIgnoreCase) ? "个视频" : "张图片")}";
 
     private static string FormatTime(string value)
     {
         return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed)
             ? parsed.ToLocalTime().ToString("MM-dd HH:mm", CultureInfo.CurrentCulture)
             : value;
+    }
+
+    private static string? TryGetStringProperty(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
     }
 
     private static string TryReadModel(string parametersJson)
@@ -130,9 +161,9 @@ public sealed class HistoryTaskItemViewModel
         try
         {
             using var document = JsonDocument.Parse(parametersJson);
-            return document.RootElement.TryGetProperty("model", out var model)
-                ? model.GetString() ?? ""
-                : "";
+            return TryGetStringProperty(document.RootElement, "model")
+                   ?? TryGetStringProperty(document.RootElement, "Model")
+                   ?? "";
         }
         catch (JsonException)
         {

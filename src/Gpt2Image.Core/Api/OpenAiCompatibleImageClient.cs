@@ -225,7 +225,22 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         }
 
         var model = NormalizeMainlineModel(profile.MainlineModel);
-        return await OptimizePromptWithModelAsync(profile, prompt, model, allowAutoRetry: true, cancellationToken)
+        return await OptimizePromptWithModelAsync(profile, prompt, model, allowAutoRetry: true, isVideoPrompt: false, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<PromptOptimizationResult> OptimizeVideoPromptAsync(
+        BackendProfile profile,
+        string prompt,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return new PromptOptimizationResult { Error = "提示词为空" };
+        }
+
+        var model = NormalizeMainlineModel(profile.MainlineModel);
+        return await OptimizePromptWithModelAsync(profile, prompt, model, allowAutoRetry: true, isVideoPrompt: true, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -234,14 +249,19 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         ChatRequest request,
         CancellationToken cancellationToken)
     {
-        var messages = request.Messages
-            .Where(message => !string.IsNullOrWhiteSpace(message.Content))
-            .Select(message => new
-            {
-                role = NormalizeChatRole(message.Role),
-                content = message.Content
-            })
-            .ToArray();
+        object[] messages;
+        try
+        {
+            messages = request.Messages
+                .Where(message => !string.Equals(message.Role, "error", StringComparison.OrdinalIgnoreCase))
+                .Where(message => !string.IsNullOrWhiteSpace(message.Content) || message.Attachments.Count > 0)
+                .Select(BuildChatMessagePayload)
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            return new ChatResult { Error = $"读取聊天附件失败：{ex.Message}" };
+        }
         if (messages.Length == 0)
         {
             return new ChatResult { Error = "消息内容为空" };
@@ -330,12 +350,15 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         string prompt,
         string model,
         bool allowAutoRetry,
+        bool isVideoPrompt,
         CancellationToken cancellationToken)
     {
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(DefaultPromptOptimizationTimeout);
         var requestToken = timeoutCts.Token;
-        using var message = BuildPromptOptimizationRequest(profile, prompt, model);
+        using var message = isVideoPrompt
+            ? BuildVideoPromptOptimizationRequest(profile, prompt, model)
+            : BuildPromptOptimizationRequest(profile, prompt, model);
 
         try
         {
@@ -359,7 +382,7 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
                 if (allowAutoRetry && !string.Equals(model, DefaultChatModel, StringComparison.OrdinalIgnoreCase) && IsModelUnavailableError(error))
                 {
                     _logger?.LogWarning("提示词优化模型 {Model} 不可用，改用 {FallbackModel} 重试。错误 {Error}", model, DefaultChatModel, error);
-                    return await OptimizePromptWithModelAsync(profile, prompt, DefaultChatModel, allowAutoRetry: false, cancellationToken)
+                    return await OptimizePromptWithModelAsync(profile, prompt, DefaultChatModel, allowAutoRetry: false, isVideoPrompt, cancellationToken)
                         .ConfigureAwait(false);
                 }
 
@@ -483,6 +506,102 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
         }
     }
 
+    private static object BuildChatMessagePayload(ChatMessage message)
+    {
+        var role = NormalizeChatRole(message.Role);
+        if (message.Attachments.Count == 0)
+        {
+            return new { role, content = (object)message.Content };
+        }
+
+        var parts = new List<object>();
+        if (!string.IsNullOrWhiteSpace(message.Content))
+        {
+            parts.Add(new { type = "text", text = message.Content });
+        }
+
+        foreach (var attachment in message.Attachments)
+        {
+            if (attachment.IsImage)
+            {
+                ValidateChatAttachment(attachment);
+                parts.Add(new
+                {
+                    type = "image_url",
+                    image_url = new { url = ReadChatImageAsDataUrl(attachment) }
+                });
+            }
+            else if (attachment.IsText)
+            {
+                ValidateChatAttachment(attachment);
+                parts.Add(new
+                {
+                    type = "text",
+                    text = BuildTextAttachmentPrompt(attachment)
+                });
+            }
+        }
+
+        return new { role, content = (object)parts.ToArray() };
+    }
+
+    private static void ValidateChatAttachment(ChatAttachment attachment)
+    {
+        if (string.IsNullOrWhiteSpace(attachment.FilePath) || !File.Exists(attachment.FilePath))
+        {
+            throw new FileNotFoundException("聊天附件不存在。", attachment.FilePath);
+        }
+
+        var length = new FileInfo(attachment.FilePath).Length;
+        const long maxBytes = 20L * 1024 * 1024;
+        if (length > maxBytes)
+        {
+            throw new InvalidOperationException($"聊天附件超过 20MB：{attachment.FileName}");
+        }
+    }
+
+    private static string ReadChatImageAsDataUrl(ChatAttachment attachment)
+    {
+        var bytes = File.ReadAllBytes(attachment.FilePath);
+        var mimeType = string.IsNullOrWhiteSpace(attachment.MimeType) ? "image/png" : attachment.MimeType;
+        return $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
+    }
+
+    private static string BuildTextAttachmentPrompt(ChatAttachment attachment)
+    {
+        var text = File.ReadAllText(attachment.FilePath);
+        if (text.Length > 60_000)
+        {
+            text = text[..60_000] + "\n...<文件内容过长，已截断>";
+        }
+
+        text = EscapeMarkdownFenceTerminators(text);
+        return $"附件文件：{attachment.FileName}\n```{LanguageForFileName(attachment.FileName)}\n{text}\n```";
+    }
+
+    private static string EscapeMarkdownFenceTerminators(string text)
+    {
+        return text.Replace("```", "`​``", StringComparison.Ordinal);
+    }
+
+    private static string LanguageForFileName(string fileName)
+    {
+        return Path.GetExtension(fileName).TrimStart('.').ToLowerInvariant() switch
+        {
+            "cs" => "csharp",
+            "js" => "javascript",
+            "ts" => "typescript",
+            "py" => "python",
+            "md" => "markdown",
+            "json" => "json",
+            "xml" => "xml",
+            "html" => "html",
+            "css" => "css",
+            "sql" => "sql",
+            _ => "text"
+        };
+    }
+
     private static HttpRequestMessage BuildPromptOptimizationRequest(
         BackendProfile profile,
         string prompt,
@@ -504,6 +623,35 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
                 new { role = "user", content = $"原始提示词：\n{prompt.Trim()}" }
             },
             temperature = 0.4,
+            max_tokens = 900
+        };
+        return CreateJsonRequest(profile, "chat/completions", BackendProtocol.ChatCompletionsImageJson, body);
+    }
+
+    private static HttpRequestMessage BuildVideoPromptOptimizationRequest(
+        BackendProfile profile,
+        string prompt,
+        string model)
+    {
+        const string developerPrompt =
+            "你是一名专业的电影摄影指导、广告导演和 AI 视频提示词优化师，擅长把普通描述改写成适合文生视频模型的单段高质量视频提示词。"
+            + "必须保留用户原始主体、事件、时间、地点、人物关系、情绪和事实，不要凭空增加新角色、新地点或改变故事。"
+            + "按照成熟文生视频案例的结构补充：主体动作、场景细节、镜头景别、机位角度、运镜方式、运动节奏、光线、色彩、氛围、真实物理连续性、电影质感。"
+            + "运镜要明确但不要复杂堆砌，优先选择一种稳定可执行的镜头，例如缓慢推进、轻微跟拍、平稳横移、低角度推近或缓慢拉远。"
+            + "动作要连续、自然、可拍摄，避免一条提示词里塞入多个互相冲突的镜头或时间跳变。"
+            + "如果是现实人物/纪实场景，保持真实摄影风格，避免过度奇幻化；如果原始提示词没有要求，不要添加字幕、文字、Logo、水印。"
+            + "输出应是一段适合直接提交视频生成模型的提示词，包含画面和运动描述，不要分镜编号，不要解释，不要 Markdown。"
+            + "如果原始提示词是中文，用中文输出；其他语言保持同语种。";
+
+        var body = new
+        {
+            model,
+            messages = new[]
+            {
+                new { role = "developer", content = developerPrompt },
+                new { role = "user", content = $"原始视频提示词：\n{prompt.Trim()}" }
+            },
+            temperature = 0.35,
             max_tokens = 900
         };
         return CreateJsonRequest(profile, "chat/completions", BackendProtocol.ChatCompletionsImageJson, body);
@@ -1223,7 +1371,12 @@ public sealed class OpenAiCompatibleImageClient : IImageGenerationClient
     private static string NormalizeChatRole(string? role)
     {
         var value = role?.Trim().ToLowerInvariant();
-        return value is "system" or "developer" or "assistant" ? value : "user";
+        return value switch
+        {
+            "system" or "developer" or "dev" => "developer",
+            "assistant" => "assistant",
+            _ => "user"
+        };
     }
 
     private static string? ExtractChatText(JsonElement root)

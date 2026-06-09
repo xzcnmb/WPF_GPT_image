@@ -11,7 +11,7 @@ using Gpt2Image.Core.Queue;
 using Gpt2Image.Core.Storage;
 using Gpt2Image.Core.Storage.Repositories;
 using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace Gpt2Image.Wpf.ViewModels;
 
@@ -140,11 +140,11 @@ public sealed partial class CreatePageViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanOptimizePrompt))]
     private async Task OptimizePromptAsync(CancellationToken cancellationToken)
     {
-        var profile = _profiles.ListEnabled().FirstOrDefault();
+        var profile = _profiles.GetFirstEnabledForRole(BackendProfileRole.Prompt);
         if (profile is null)
         {
-            Status = "缺少后端配置";
-            AddLog("警告", "缺少后端配置", "设置页保存接口地址和密钥。");
+            Status = "缺少提示词润色后端配置";
+            AddLog("警告", "缺少提示词润色后端配置", "请在设置页保存用途为提示词润色 / 对话 API 的配置。");
             return;
         }
 
@@ -207,11 +207,11 @@ public sealed partial class CreatePageViewModel : ObservableObject
             return;
         }
 
-        var profile = _profiles.ListEnabled().FirstOrDefault();
+        var profile = _profiles.GetFirstEnabledForRole(BackendProfileRole.Image);
         if (profile is null)
         {
-            Status = "缺少后端配置";
-            AddLog("警告", "缺少后端配置", "设置页保存接口地址和密钥。");
+            Status = "缺少图片生成后端配置";
+            AddLog("警告", "缺少图片生成后端配置", "请在设置页保存用途为图片生成 API 的配置。");
             return;
         }
 

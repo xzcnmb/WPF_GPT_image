@@ -8,6 +8,8 @@ public sealed class AppPaths
         DataDirectory = Path.Combine(root, "data");
         DatabasePath = Path.Combine(DataDirectory, "app.db");
         ImagesDirectory = Path.Combine(root, "images");
+        VideosDirectory = Path.Combine(root, "videos");
+        ChatAttachmentsDirectory = Path.Combine(root, "chat-attachments");
         PartialImagesDirectory = Path.Combine(root, "cache", "partial");
         LogsDirectory = logsDirectory ?? Path.Combine(root, "logs");
     }
@@ -16,6 +18,8 @@ public sealed class AppPaths
     public string DataDirectory { get; }
     public string DatabasePath { get; }
     public string ImagesDirectory { get; }
+    public string VideosDirectory { get; }
+    public string ChatAttachmentsDirectory { get; }
     public string PartialImagesDirectory { get; }
     public string LogsDirectory { get; }
 
@@ -32,6 +36,8 @@ public sealed class AppPaths
     {
         Directory.CreateDirectory(DataDirectory);
         Directory.CreateDirectory(ImagesDirectory);
+        Directory.CreateDirectory(VideosDirectory);
+        Directory.CreateDirectory(ChatAttachmentsDirectory);
         Directory.CreateDirectory(PartialImagesDirectory);
         Directory.CreateDirectory(LogsDirectory);
     }

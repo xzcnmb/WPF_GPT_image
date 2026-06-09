@@ -1,61 +1,125 @@
 <UserControl x:Class="Gpt2Image.Wpf.Views.AgentPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Margin="0,0,0,18">
-            <TextBlock Text="自动任务" FontSize="28" FontWeight="SemiBold" />
-        </StackPanel>
+        <Grid Margin="0,0,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="智能任务" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="把复杂目标拆成可控轮次执行：先写目标，再选择是否联网搜索，最后观察状态反馈。"
+                           Style="{StaticResource PageSubtitleTextStyle}" />
+                <TextBlock Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,6,24,0" />
+            </StackPanel>
+            <Border Grid.Column="1" Style="{StaticResource StatusPillStyle}" VerticalAlignment="Top" Margin="18,4,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="ShieldCheck" Width="16" Height="16" Foreground="{StaticResource AccentBrush}" Margin="0,0,6,0" />
+                    <TextBlock Text="Goal 模式" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" FontSize="12" />
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="520" />
-                <ColumnDefinition Width="20" />
-                <ColumnDefinition Width="300" MinWidth="280" />
+                <ColumnDefinition Width="*" MinWidth="560" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="340" MinWidth="320" />
             </Grid.ColumnDefinitions>
 
-            <Border BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="18">
+            <Border Style="{StaticResource SectionCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
+
                     <StackPanel Margin="0,0,0,14">
-                        <TextBlock Text="目标" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="目标编排" Style="{StaticResource SectionTitleTextStyle}" />
+                        <TextBlock Text="描述最终结果、边界条件和验收方式。建议写清楚“不要做什么”，减少无效尝试。"
+                                   Style="{StaticResource SectionSubtitleTextStyle}" />
                     </StackPanel>
+
                     <TextBox Grid.Row="1"
                              Text="{Binding Goal, UpdateSourceTrigger=PropertyChanged}"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto" />
+                             VerticalScrollBarVisibility="Auto"
+                             MinHeight="320"
+                             materialDesign:HintAssist.Hint="例如：检查最近一次生成失败的原因，给出修复方案并验证。" />
+
+                    <Border Grid.Row="2" Style="{StaticResource MutedSectionCardStyle}" Margin="0,14,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <materialDesign:PackIcon Kind="LightbulbOnOutline" Width="20" Height="20" Foreground="{StaticResource WarningBrush}" Margin="0,2,10,0" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="交互建议" FontWeight="SemiBold" />
+                                <TextBlock Text="一次只交给 Goal 一个明确目标；涉及真实 API、文件写入或命令执行时，优先要求先计划、再确认、再执行。"
+                                           Style="{StaticResource SectionSubtitleTextStyle}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Border>
 
-            <Border Grid.Column="2" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Background="{StaticResource PanelBrush}" Padding="18">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="运行参数" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="12" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-                    <CheckBox Grid.Row="1" Content="联网搜索" IsChecked="{Binding UseWebSearch}" Margin="0,0,0,14" />
+                <Border Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="运行控制" Style="{StaticResource SectionTitleTextStyle}" />
+                        <TextBlock Text="根据任务复杂度选择搜索和轮次。" Style="{StaticResource SectionSubtitleTextStyle}" Margin="0,4,0,16" />
 
-                    <StackPanel Grid.Row="2">
+                        <Border Style="{StaticResource MutedSectionCardStyle}" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox IsChecked="{Binding UseWebSearch}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Text="联网搜索" FontWeight="SemiBold" />
+                                    <TextBlock Text="需要查最新资料、文档或公开参考时开启。" Style="{StaticResource SectionSubtitleTextStyle}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
                         <TextBlock Text="最大轮次" FontWeight="SemiBold" />
-                        <TextBox Text="{Binding MaxRounds, UpdateSourceTrigger=PropertyChanged}" Margin="0,7,0,18" />
-                        <Button Content="运行" Command="{Binding RunCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+                        <TextBox Text="{Binding MaxRounds, UpdateSourceTrigger=PropertyChanged}" Margin="0,7,0,16" />
+                        <Button Content="开始运行 Goal" Command="{Binding RunCommand}" Style="{StaticResource PrimaryButtonStyle}" />
                     </StackPanel>
+                </Border>
 
-                    <TextBlock Grid.Row="3" Text="{Binding Status}" Style="{StaticResource StatusTextBlockStyle}" Margin="0,16,0,0" />
-                </Grid>
-            </Border>
+                <Border Grid.Row="2" Style="{StaticResource SectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="执行反馈" Style="{StaticResource SectionTitleTextStyle}" />
+                        <TextBlock Text="当前版本以状态文字反馈运行结果；后续可扩展为时间线和中间步骤。"
+                                   Style="{StaticResource SectionSubtitleTextStyle}" Margin="0,4,0,14" />
+                        <Border Style="{StaticResource MutedSectionCardStyle}">
+                            <StackPanel HorizontalAlignment="Center" Margin="10,22">
+                                <materialDesign:PackIcon Kind="TimelineClockOutline" Width="42" Height="42" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" />
+                                <TextBlock Text="等待目标输入" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,2" />
+                                <TextBlock Text="运行后请关注顶部状态与后续输出。" Foreground="{StaticResource TextSecondaryBrush}" TextAlignment="Center" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
